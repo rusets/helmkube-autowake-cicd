@@ -7,14 +7,11 @@ on:
         description: 'Type "DESTROY" to confirm'
         required: true
         type: string
+        default: ""
 
 permissions:
   id-token: write
   contents: read
-
-concurrency:
-  group: tf-prod
-  cancel-in-progress: false
 
 env:
   AWS_REGION: us-east-1
@@ -48,6 +45,31 @@ jobs:
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform init -input=false -backend-config=backend.hcl
 
-      - name: Terraform destroy
+      # Сохраним имя репозитория до destroy (outputs ещё доступны)
+      - name: Read ECR repo name from outputs (best-effort)
+        id: pre
         working-directory: ${{ env.TF_WORKDIR }}
-        run: terraform destroy -auto-approve -input=false
+        run: |
+          set -e
+          REPO_URL="$(terraform output -raw ecr_repo_url || true)"
+          if [ -n "$REPO_URL" ]; then
+            # repo name: part after domain
+            REPO_NAME="${REPO_URL#*.amazonaws.com/}"
+            echo "repo_name=$REPO_NAME" >> $GITHUB_OUTPUT
+          else
+            # fallback на известное имя из кода
+            echo "repo_name=helmkube-autowake/hello-app" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Terraform destroy (auto-approve)
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform destroy -auto-approve
+
+      # Страховка: если по какой-то причине ECR остался — удалим напрямую
+      - name: Ensure ECR repository is gone (force)
+        run: |
+          set -x
+          REPO_NAME="${{ steps.pre.outputs.repo_name }}"
+          if aws ecr describe-repositories --repository-names "$REPO_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
+            aws ecr delete-repository --repository-name "$REPO_NAME" --force --region "$AWS_REGION" || true
+          fi
