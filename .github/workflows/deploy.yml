@@ -25,12 +25,11 @@ concurrency:
 env:
   AWS_REGION: us-east-1
   AWS_ROLE_ARN: arn:aws:iam::097635932419:role/helmkube-autowake-gha-role
-  ECR_REPO: 097635932419.dkr.ecr.us-east-1.amazonaws.com/helmkube-autowake/hello-app
   TF_WORKDIR: infra
 
 jobs:
   plan:
-    name: Terraform plan + build image
+    name: Terraform plan (no build/push)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -58,33 +57,6 @@ jobs:
             BKT=$(awk -F'= *' '/^bucket/ {gsub(/"/,"",$2); print $2}' infra/backend.hcl || true)
             if [ -n "$BKT" ]; then aws s3 ls "s3://$BKT" || true; fi
           fi
-
-      - name: Ensure ECR repo exists (idempotent)
-        run: |
-          REPO_NAME="helmkube-autowake/hello-app"
-          if ! aws ecr describe-repositories --repository-names "$REPO_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
-            aws ecr create-repository \
-              --repository-name "$REPO_NAME" \
-              --image-scanning-configuration scanOnPush=true \
-              --region "$AWS_REGION"
-          fi
-
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-        with:
-          mask-password: 'true'
-
-      - name: Build & Push Docker image
-        working-directory: app
-        run: |
-          docker buildx create --use --name builder || docker buildx use builder
-          docker buildx build \
-            --platform linux/amd64 \
-            -t "${ECR_REPO}:${IMAGE_TAG}" \
-            -f Dockerfile \
-            . \
-            --push
-          echo "IMAGE pushed: ${ECR_REPO}:${IMAGE_TAG}"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -120,7 +92,7 @@ jobs:
             ${{ env.TF_WORKDIR }}/tfplan.txt
 
   apply:
-    name: Terraform apply (manual + approval)
+    name: Terraform apply (manual + build & push image)
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.apply == true }}
     needs: [plan]
     runs-on: ubuntu-latest
@@ -131,6 +103,15 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+
+      - name: Choose IMAGE_TAG (same logic)
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          fi
+          echo "Using IMAGE_TAG=$IMAGE_TAG"
 
       - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -156,3 +137,28 @@ jobs:
       - name: Terraform apply (using saved plan)
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform apply -input=false ../plan/tfplan
+
+      - name: Read ECR repo URL from Terraform outputs
+        id: tfout
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: |
+          echo "repo_url=$(terraform output -raw ecr_repo_url)" >> $GITHUB_OUTPUT
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: 'true'
+
+      - name: Build & Push Docker image (only after apply)
+        working-directory: app
+        run: |
+          REPO="${{ steps.tfout.outputs.repo_url }}"
+          TAG="${IMAGE_TAG}"
+          docker buildx create --use --name builder || docker buildx use builder
+          docker buildx build \
+            --platform linux/amd64 \
+            -t "${REPO}:${TAG}" \
+            -f Dockerfile \
+            . \
+            --push
+          echo "IMAGE pushed: ${REPO}:${TAG}"
