@@ -59,8 +59,20 @@ jobs:
             if [ -n "$BKT" ]; then aws s3 ls "s3://$BKT" || true; fi
           fi
 
+      - name: Ensure ECR repo exists (idempotent)
+        run: |
+          REPO_NAME="helmkube-autowake/hello-app"
+          if ! aws ecr describe-repositories --repository-names "$REPO_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
+            aws ecr create-repository \
+              --repository-name "$REPO_NAME" \
+              --image-scanning-configuration scanOnPush=true \
+              --region "$AWS_REGION"
+          fi
+
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: 'true'
 
       - name: Build & Push Docker image
         working-directory: app
