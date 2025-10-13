@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.crash
+.terraform/
+.terraform.lock.hcl
+tfplan
+plan/
+# kubeconfig
+k3s.yaml
+# local envs
+.env

@@ -1,0 +1,46 @@
+name: Destroy (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "DESTROY" to confirm'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ROLE_ARN: arn:aws:iam::097635932419:role/helmkube-autowake-gha-role
+  TF_WORKDIR: infra
+
+jobs:
+  destroy:
+    if: ${{ github.event.inputs.confirm == 'DESTROY' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: prod   # <-- аппрув окружения обязателен
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform init -input=false -backend-config=backend.hcl
+
+      - name: Terraform destroy
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform destroy -auto-approve -input=false

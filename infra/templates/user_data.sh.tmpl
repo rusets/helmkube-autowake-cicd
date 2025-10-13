@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dnf -y update || true
+dnf -y install awscli git jq --allowerasing || true
+
+modprobe br_netfilter || true
+modprobe overlay || true
+cat >/etc/sysctl.d/99-kubernetes.conf <<'EOF'
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+EOF
+sysctl --system || true
+
+TOKEN="$(curl -sS -X PUT 'http://169.254.169.254/latest/api/token' -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600' || true)"
+PUB_DNS="$(curl -fsS -H "X-aws-ec2-metadata-token: $${TOKEN:-}" http://169.254.169.254/latest/meta-data/public-hostname || true)"
+
+INSTALL_K3S_EXEC="server --write-kubeconfig-mode 0644"
+if [ -n "$${PUB_DNS:-}" ]; then
+  INSTALL_K3S_EXEC="$${INSTALL_K3S_EXEC} --tls-san $${PUB_DNS}"
+fi
+export INSTALL_K3S_EXEC
+
+curl -sfL https://get.k3s.io | sh -s -
+
+ln -sf /usr/local/bin/k3s /usr/local/bin/kubectl || true
+
+for _ in $(seq 1 60); do
+  if kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml get --raw=/readyz >/dev/null 2>&1; then
+    break
+  fi
+  sleep 5
+done
+
+KCFG=/etc/rancher/k3s/k3s.yaml
+if [ -n "$${PUB_DNS:-}" ]; then
+  sed -i "s#127.0.0.1:6443#$${PUB_DNS}:6443#g" "$${KCFG}" || true
+fi
+
+mkdir -p /home/ec2-user/.kube
+cp -f "$${KCFG}" /home/ec2-user/.kube/config
+chown -R ec2-user:ec2-user /home/ec2-user/.kube
+
+echo "[done] k3s ready"
