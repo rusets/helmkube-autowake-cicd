@@ -10,12 +10,14 @@ variable "project_name" {
 
 variable "github_org" {
   type        = string
-  description = "GitHub organization or username (used for OIDC trust)."
+  default     = "rusets"
+  description = "(kept) GitHub organization or username (used in AMI/user_data tags)."
 }
 
 variable "github_repo" {
   type        = string
-  description = "GitHub repository name associated with this deployment."
+  default     = "helmkube-autowake-cicd"
+  description = "(kept) GitHub repo (used in AMI/user_data tags)."
 }
 
 variable "image_tag" {

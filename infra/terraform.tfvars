@@ -2,9 +2,6 @@
 region       = "us-east-1"
 project_name = "helmkube-autowake"
 
-# -------------------- GitHub OIDC settings --------------------
-github_org  = "rusets"
-github_repo = "helmkube-autowake-cicd"
 
 # -------------------- Application image --------------------
 image_tag = "v1.2.1"

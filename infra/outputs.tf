@@ -18,10 +18,7 @@ output "ec2_public_ip" {
   description = "Public IP address of the k3s EC2 instance."
 }
 
-output "gha_role_arn" {
-  value       = aws_iam_role.gha_role.arn
-  description = "IAM Role ARN for GitHub Actions OIDC trust."
-}
+
 
 output "scheduler_role_arn" {
   value       = aws_iam_role.scheduler_role.arn
