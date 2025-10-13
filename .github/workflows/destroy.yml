@@ -45,31 +45,38 @@ jobs:
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform init -input=false -backend-config=backend.hcl
 
-      # Сохраним имя репозитория до destroy (outputs ещё доступны)
+      # SAFE: не падаем, если outputs отсутствуют; не пишем мусор в $GITHUB_OUTPUT
       - name: Read ECR repo name from outputs (best-effort)
         id: pre
+        shell: bash
         working-directory: ${{ env.TF_WORKDIR }}
         run: |
           set -e
-          REPO_URL="$(terraform output -raw ecr_repo_url || true)"
-          if [ -n "$REPO_URL" ]; then
-            # repo name: part after domain
-            REPO_NAME="${REPO_URL#*.amazonaws.com/}"
-            echo "repo_name=$REPO_NAME" >> $GITHUB_OUTPUT
-          else
-            # fallback на известное имя из кода
-            echo "repo_name=helmkube-autowake/hello-app" >> $GITHUB_OUTPUT
+          REPO_URL=""
+          # Попробуем аккуратно вытащить output, заглушив предупреждения
+          if terraform state list >/dev/null 2>&1; then
+            REPO_URL="$(terraform output -raw ecr_repo_url 2>/dev/null || true)"
           fi
+          if [ -n "$REPO_URL" ]; then
+            REPO_NAME="${REPO_URL#*.amazonaws.com/}"
+          else
+            # Fallback на известное имя из кода
+            REPO_NAME="helmkube-autowake/hello-app"
+          fi
+          echo "repo_name=${REPO_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Terraform destroy (auto-approve)
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform destroy -auto-approve
 
-      # Страховка: если по какой-то причине ECR остался — удалим напрямую
+      # Страховка: если ECR остался — удалить форсировано
       - name: Ensure ECR repository is gone (force)
+        shell: bash
         run: |
           set -x
           REPO_NAME="${{ steps.pre.outputs.repo_name }}"
-          if aws ecr describe-repositories --repository-names "$REPO_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
-            aws ecr delete-repository --repository-name "$REPO_NAME" --force --region "$AWS_REGION" || true
+          if [ -n "$REPO_NAME" ]; then
+            if aws ecr describe-repositories --repository-names "$REPO_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
+              aws ecr delete-repository --repository-name "$REPO_NAME" --force --region "$AWS_REGION" || true
+            fi
           fi
