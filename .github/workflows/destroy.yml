@@ -12,6 +12,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: tf-prod
+  cancel-in-progress: false
+
 env:
   AWS_REGION: us-east-1
   AWS_ROLE_ARN: arn:aws:iam::097635932419:role/helmkube-autowake-gha-role
@@ -22,7 +26,7 @@ jobs:
     if: ${{ github.event.inputs.confirm == 'DESTROY' }}
     runs-on: ubuntu-latest
     environment:
-      name: prod   # <-- аппрув окружения обязателен
+      name: prod
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +35,9 @@ jobs:
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Who am I?
+        run: aws sts get-caller-identity
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3

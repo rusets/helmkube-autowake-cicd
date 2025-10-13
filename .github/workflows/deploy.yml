@@ -15,8 +15,12 @@ on:
         default: ""
 
 permissions:
-  id-token: write   # OIDC
+  id-token: write
   contents: read
+
+concurrency:
+  group: tf-prod
+  cancel-in-progress: false
 
 env:
   AWS_REGION: us-east-1
@@ -28,7 +32,6 @@ jobs:
   plan:
     name: Terraform plan + build image
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -47,6 +50,14 @@ jobs:
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Who am I?
+        run: |
+          aws sts get-caller-identity
+          if [ -f infra/backend.hcl ]; then
+            BKT=$(awk -F'= *' '/^bucket/ {gsub(/"/,"",$2); print $2}' infra/backend.hcl || true)
+            if [ -n "$BKT" ]; then aws s3 ls "s3://$BKT" || true; fi
+          fi
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -70,8 +81,7 @@ jobs:
 
       - name: Terraform init
         working-directory: ${{ env.TF_WORKDIR }}
-        run: |
-          terraform init -input=false -backend-config=backend.hcl
+        run: terraform init -input=false -backend-config=backend.hcl
 
       - name: Terraform fmt & validate
         working-directory: ${{ env.TF_WORKDIR }}
@@ -103,7 +113,7 @@ jobs:
     needs: [plan]
     runs-on: ubuntu-latest
     environment:
-      name: prod   # <-- включи Protected Environment "prod" в настройках репо с required reviewers
+      name: prod
     permissions:
       id-token: write
       contents: read
