@@ -1,75 +1,20 @@
-# 🚀 helmkube-autowake-cicd
+# 🚀 Helmkube Autowake — K3s + Lambda + API Gateway
 
-Spin up a **self-hosted K3s cluster** on AWS EC2 with full Terraform automation,  
-auto-wake and auto-sleep Lambdas, Prometheus + Grafana stack, and zero-cost idle mode.  
-
-> 🌐 **Live Demo:** [app.helmkube.site](https://app.helmkube.site)
+A fully automated, cost-efficient **K3s Kubernetes cluster on AWS** that wakes up on demand and sleeps automatically after inactivity.  
+Perfect for personal projects, demos, or portfolios — running for **$0 at idle**.
 
 ---
 
-## 📦 What you get
+## 🧠 Overview
 
-- **K3s cluster** on a single Amazon Linux 2023 EC2 instance.  
-- **Helm-deployed Node.js app** (fixed NodePort 30080).  
-- **Wake API:** API Gateway → Lambda → Start EC2 → Wait for K3s → Redirect.  
-- **Auto-Sleep:** EventBridge Scheduler → Lambda → Stop EC2 after inactivity.  
-- **Monitoring:** Prometheus + Grafana (NodePorts 30991 / 30090).  
-- **Secure parameters:** stored in AWS SSM (Parameter Store + SecureString).  
-- **ECR repository:** for application container images.  
-- **Commented Terraform** modules — production-ready & portfolio-friendly.
+This stack runs a single-node K3s cluster on EC2, deploys a demo app from ECR via Helm,  
+and uses two lightweight Lambda functions to **wake** or **sleep** the instance through API Gateway and EventBridge.
 
-✅ Zero cost while EC2 is stopped  
-✅ Instant wake-up through API Gateway  
-✅ Cleanly separated `.tf` modules for real-world readability  
+🔹 When idle → Lambda stops EC2.  
+🔹 When accessed → Wake API starts EC2 and waits for app readiness.  
+🔹 Everything (ECR, SSM, Prometheus, Grafana) managed via Terraform.
 
----
-
-## 🧭 Repository structure
-```
-.
-├── app/                     # Demo Node.js app (Dockerized)
-├── charts/hello/            # Helm chart for the app
-├── infra/
-│   ├── ami-and-ec2.tf       # EC2 + EIP + user_data
-│   ├── apigw.tf             # API Gateway + Lambdas
-│   ├── build-push.tf        # Docker build & push to ECR
-│   ├── ecr.tf               # ECR repository
-│   ├── helm.tf              # Helm deploy via kubeconfig
-│   ├── monitoring.tf        # Prometheus + Grafana
-│   ├── iam-*.tf             # IAM roles (EC2, Lambda, Scheduler)
-│   ├── ssm.tf               # Heartbeat parameter
-│   ├── ssm-deploy.tf        # Optional SSM-based deploy
-│   ├── outputs.tf           # Safe outputs only
-│   ├── variables.tf         # Variables + validation
-│   └── templates/user_data.sh.tmpl
-flowchart TD
-  user[User Browser] -->|HTTPS| apigw[API Gateway (HTTP)]
-  apigw -->|Invoke| wake[Lambda: wake_instance]
-  scheduler[EventBridge Scheduler] -->|rate(1m)| sleep[Lambda: sleep_instance]
-
-  wake -->|Start/Describe| ec2[EC2 k3s node]
-  sleep -->|Stop| ec2
-  wake -->|Read/Write| ssm[SSM Parameter /neon-portfolio/last_heartbeat]
-  sleep -->|Read| ssm
-
-  subgraph vpc[VPC]
-    ec2 -->|NodePort 30080| svc[Service hello-svc]
-    svc --> pod[Pod: hello (Docker)]
-    ec2 -.->|kubectl / Helm| helm[Helm chart "hello"]
-    ecr[ECR repository] --> pod
-    subgraph mon[Monitoring]
-      grafana[Grafana (NodePort 30090)]
-      prom[Prometheus (NodePort 30991)]
-    end
-  end
-
-  cw[CloudWatch Logs] <-->|Function logs| wake
-  cw <-->|Function logs| sleep
-  apigw --> cw
-  s3[S3 bucket assoc-logs] -.->|SSM association output| ec2
-```
-
-```
+Live Demo: [https://app.helmkube.site](https://app.helmkube.site)
 
 ---
 
@@ -77,19 +22,19 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  subgraph Client
-    U[User\nBrowser]
+  subgraph User
+    U[Browser]
   end
 
-  U -->|Wake request| APIGW[API Gateway (HTTP API)]
+  U -->|HTTP /wake| APIGW[API Gateway]
   APIGW --> WAKE[Lambda: wake_instance]
-  WAKE --> EC2[(EC2: k3s node)]
+  WAKE --> EC2[(EC2: K3s Node)]
   WAKE --> SSM[(SSM Parameter Store)]
-  WAKE --> ECR[(ECR: hello image)]
-  EC2 -->|Helm deploy| K8S[(k3s cluster)]
-  K8S --> SVC[Service NodePort 30080]
-  K8S --> PROM[Prometheus 30991]
-  K8S --> GRAF[Grafana 30090]
+  WAKE --> ECR[(ECR Repository)]
+  EC2 -->|Helm Deploy| K3S[(K3s Cluster)]
+  K3S --> APP[NodePort Service :30080]
+  K3S --> GRAF[Grafana :30090]
+  K3S --> PROM[Prometheus :30991]
 
   subgraph Monitoring
     PROM
@@ -97,124 +42,108 @@ flowchart LR
   end
 
   subgraph AutoSleep
-    EVT[EventBridge Scheduler (1 min)]
+    EVT[EventBridge Scheduler (1m)]
     SLP[Lambda: sleep_instance]
   end
 
-  EVT --> SLP
-  SLP --> EC2
+  EVT --> SLP --> EC2
 
-  classDef infra fill:#0b3d3d,stroke:#0b3d3d,color:#fff
+  classDef infra fill:#093f48,stroke:#093f48,color:#fff
   classDef runtime fill:#0b2a42,stroke:#0b2a42,color:#fff
   class APIGW,WAKE,SLP,EVT,SSM,ECR infra
-  class EC2,K8S,SVC,PROM,GRAF runtime
+  class EC2,K3S,APP,PROM,GRAF runtime
 ```
 
-**Wake flow:**  
-🌐 User → API Gateway → Lambda (wake_instance.py) → Start EC2 → Wait for K3s → Redirect to App  
+---
 
-**Sleep flow:**  
-⏰ EventBridge Scheduler → Lambda (sleep_instance.py) → Stop EC2 after `idle_minutes`  
+## ⚙️ Key Features
 
-**Monitoring:**  
-📊 Prometheus + Grafana (NodePorts) — Grafana admin password stored in SSM.  
+- 💤 **Auto-sleep / Auto-wake** — EC2 shuts down after `idle_minutes`, wakes via API call  
+- 🐳 **ECR-based deployments** — every app version tagged & deployed automatically  
+- 📊 **Monitoring stack** — Prometheus + Grafana (NodePort)  
+- 🔐 **Secrets in AWS SSM** — passwords never stored in state  
+- 🧩 **Full IaC** — 100% Terraform-managed infrastructure  
+- 💬 **SSM-only access** — no SSH keys or public ports needed
 
 ---
 
-## ⚙️ Prerequisites
-- AWS CLI v2 + Terraform ≥ 1.6  
-- IAM permissions for EC2, Lambda, API GW, ECR, SSM  
-- Docker for local image build (optional)  
-- Existing EIP allocation ID (used in `ami-and-ec2.tf`)  
-- Domain (optional): app.helmkube.site  
+## 📁 Repository Structure
+
+```
+helmkube-autowake-cicd/
+├── app/                     # Demo app (Dockerized)
+├── infra/                   # Terraform modules
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── terraform.tfvars
+│   ├── outputs.tf
+│   └── templates/
+├── lambda/                  # wake_instance.py & sleep_instance.py
+└── README.md
+```
 
 ---
 
-## 🔧 First-time setup
+## 🚀 Deployment Steps
 
 ```bash
-# Initialize Terraform
+# 1. Initialize Terraform
 cd infra
 terraform init
 
-# Apply infrastructure
+# 2. Apply infrastructure
 terraform apply -auto-approve
 
-# (Optional) Build & push image to ECR
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com
+# 3. Fetch kubeconfig (auto)
+ls build/k3s-embed.yaml
 
-docker build -t hello-app:v1.2.1 ./app
-docker tag hello-app:v1.2.1 <ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/helmkube-autowake/hello-app:v1.2.1
-docker push <ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/helmkube-autowake/hello-app:v1.2.1
+# 4. Access Grafana / Prometheus
+http://<EC2_PUBLIC_DNS>:30090  (Grafana)
+http://<EC2_PUBLIC_DNS>:30991  (Prometheus)
 ```
 
-Then visit:  
-👉 **http://<ec2-dns>:30080** – your app  
-👉 **https://app.helmkube.site** – wake endpoint  
-
 ---
 
-## 🤖 GitHub Actions (future-ready)
-You can add these workflows easily:
-
-- **CI:** Build & push to ECR  
-- **CD:** Terraform apply / destroy + Helm upgrade  
-- **OPS:** Wake / Sleep instance via API Gateway  
-
-All jobs can use GitHub OIDC to assume `github-actions-tf-role`.
-
----
-
-## 🔍 Key variables (from `terraform.tfvars`)
+## 🔧 Key Variables
 
 | Name | Type | Default | Description |
 |------|------|----------|-------------|
-| `project_name` | string | helmkube-autowake | Prefix for AWS resources |
 | `region` | string | us-east-1 | AWS region |
-| `instance_type` | string | m7i-flex.large | EC2 instance type |
-| `admin_ip` | string | your /32 | Restricts Grafana/Prometheus access |
+| `instance_type` | string | m7i-flex.large | EC2 size |
 | `node_port` | number | 30080 | App NodePort |
-| `grafana_node_port` | number | 30090 | Grafana UI |
-| `prometheus_node_port` | number | 30991 | Prometheus UI |
-| `idle_minutes` | number | 5 | Auto-sleep delay |
-| `use_ssm_deploy` | bool | false | Use SSM kubectl deploy |
+| `grafana_node_port` | number | 30090 | Grafana NodePort |
+| `prometheus_node_port` | number | 30991 | Prometheus NodePort |
+| `admin_ip` | string | `x.x.x.x/32` | Restrict dashboards |
+| `idle_minutes` | number | 5 | Idle timeout before stop |
+| `use_ssm_deploy` | bool | false | Deploy via SSM (kubectl) or local Helm |
+| `project_name` | string | helmkube-autowake | Resource prefix |
 
 ---
 
-## 💰 Cost notes
-**Idle:**  
-  $0 for EC2 (completely stopped)  
-  + pennies for Lambda invocations, API GW, CloudWatch, SSM  
+## 🌍 Live Demo
 
-**Active:**  
-  ~ $0.11/hr for m7i-flex.large instance  
-  Minimal storage (SSM + ECR) < $2/mo  
+🟢 **Visit:** [https://app.helmkube.site](https://app.helmkube.site)  
+⏱️ *Starts EC2 automatically, initializes K3s, and redirects to your app.*
 
 ---
 
-## 🆘 Troubleshooting
+## 💰 Cost Breakdown
 
-**K3s API not ready** → Wait 60–90 sec after wake (cloud-init finalizing)  
-**Helm timeout** → increase `ready_poll_total_sec` in variables.tf  
-**Grafana login** →  
-```bash
-aws ssm get-parameter   --name /helmkube/grafana/admin_password   --with-decryption
-```
-**API 403** → verify `aws_lambda_permission` covers `execution_arn /*/*`
+| State | Components | Approx. Monthly Cost |
+|--------|-------------|----------------------|
+| **Idle** | S3, DynamoDB, Lambdas, API GW | <$0.50 |
+| **Running** | EC2 (m7i-flex.large) | ~$15/month |
 
 ---
 
-## 🧹 Cleanup
+## 🧩 Future Enhancements
 
-```bash
-# Optional stop
-aws ec2 stop-instances --instance-ids <id> --region us-east-1
-
-# Destroy all resources
-cd infra
-terraform destroy -auto-approve
-```
+- ✅ Add CloudWatch alarms for uptime tracking  
+- ✅ CI/CD pipeline with GitHub Actions (build → ECR → Terraform apply)  
+- ⏳ Optional Route53 automation with ACM cert  
 
 ---
 
-## 🖼️ Architecture diagram
+## 📝 License
+
+MIT — Created by [Ruslan Dashkin](https://github.com/rusets)
