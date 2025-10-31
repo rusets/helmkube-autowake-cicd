@@ -1,9 +1,8 @@
 ############################################
-# SSM parameters (protected & drift-proof)
+# SSM Parameter — Heartbeat (drift-tolerant)
+# Purpose: marker updated by Lambdas at runtime
+# Notes: ignore value drift so Terraform doesn’t fight the app
 ############################################
-# Heartbeat marker the Lambdas will update at runtime.
-# We intentionally ignore 'value' drift so TF doesn’t fight the app.
-
 resource "aws_ssm_parameter" "heartbeat" {
   name        = "/neon-portfolio/last_heartbeat"
   description = "Last wake heartbeat timestamp"

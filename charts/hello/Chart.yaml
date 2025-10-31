@@ -1,0 +1,9 @@
+############################################
+# Helm Chart metadata — defines name, version, and type of the application
+############################################
+apiVersion: v2
+name: hello
+description: Simple hello service for k3s
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

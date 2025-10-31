@@ -1,6 +1,4 @@
-############################################
-# Terraform state & provider caches
-############################################
+# Terraform
 **/.terraform/
 *.tfstate
 *.tfstate.*
@@ -10,56 +8,21 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
-# Keep Terraform lockfile under version control
-!infra/.terraform.lock.hcl
+# Keep the lockfile (tracked)
+#! infra/.terraform.lock.hcl
 
-
-############################################
-# Build artifacts (Terraform / Lambda)
-############################################
+# Build artifacts
 infra/build/
-infra/lambda/*.zip
 *.zip
 
-
-############################################
-# Kubeconfigs (never store sensitive configs)
-############################################
-**/*k3s*.yaml
-**/*kubeconfig*.yaml
+# Local kubeconfigs (never store)
+*/*k3s*.yaml
 k3s*.yaml
 
-
-############################################
-# tfvars (local secrets and environment-specific)
-############################################
-*.tfvars
-*.auto.tfvars
-infra/terraform.tfvars
-!infra/terraform.tfvars.example
-
-
-############################################
 # Node & OS junk
-############################################
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 .DS_Store
 
-
-############################################
-# Environment files
-############################################
-.env
-.env.*
-!.env.example
-
-
-############################################
-# IDE & editor metadata
-############################################
+# IDE
 .vscode/
 .idea/
-*.iml

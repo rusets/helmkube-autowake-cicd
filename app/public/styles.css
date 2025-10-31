@@ -1,0 +1,513 @@
+:root {
+  /* Root variables defining colors, geometry, and effects */
+  --bg: #0a0b0f;
+  --fg: #ffffff;
+  --muted: rgba(255, 255, 255, .75);
+  --glass: rgba(255, 255, 255, .06);
+  --line: rgba(255, 255, 255, .14);
+
+  /* Bubble geometry */
+  --rim: 8px;
+  /* Thickness of the rainbow rim ≈ 2 mm */
+  --rim-blur: 10px;
+  /* Glow of the rim */
+  --core-blur: 50px;
+  /* Soft "glass-like" light inside */
+}
+
+/* ===== Base and Reset Styles ===== */
+/* Apply border-box sizing to all elements */
+* {
+  box-sizing: border-box
+}
+
+/* Set full height for html and body */
+html,
+body {
+  height: 100%
+}
+
+/* Body styling: background, font, smoothing, and overflow */
+body {
+  margin: 0;
+  color: var(--fg);
+  background: #0a0b0f;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* ===== Brand Bar ===== */
+/* Fixed position brand badge with backdrop blur and border */
+.brand {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 50;
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  padding: .5rem 1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+  font-weight: 600;
+}
+
+/* Brand rocket icon sizing */
+.brand .rocket {
+  width: 18px;
+  height: 18px
+}
+
+/* ===== Neon Bubbles (Animated Background) ===== */
+/* Large fixed-position circular bubbles with screen blend mode */
+.bubble {
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  /* Saturated colors on dark background */
+  will-change: transform;
+}
+
+/* Rainbow thin rim using conic gradient and masking for thickness */
+.bubble::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(#ff5a7a, #ffb83f, #3dff9e, #2ddfff, #a67bff, #ff5a7a);
+  -webkit-mask: radial-gradient(circle at 50% 50%,
+      transparent 0 calc(50% - var(--rim)),
+      #000 calc(50% - var(--rim)) 100%);
+  mask: radial-gradient(circle at 50% 50%,
+      transparent 0 calc(50% - var(--rim)),
+      #000 calc(50% - var(--rim)) 100%);
+  filter: blur(var(--rim-blur)) saturate(185%);
+  animation: spin 60s linear infinite;
+}
+
+/* Soft "glass-like" inner light using radial gradient, very subtle */
+.bubble::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 55% 45%,
+      rgba(255, 255, 255, .12) 0%,
+      rgba(255, 255, 255, .06) 35%,
+      rgba(255, 255, 255, .02) 62%,
+      rgba(255, 255, 255, 0) 70%);
+  filter: blur(var(--core-blur));
+  transform: scale(1.02);
+}
+
+/* Positioning and smooth drifting animation for top-left bubble */
+.bubble-tl {
+  left: -120px;
+  top: -120px;
+  width: 320px;
+  height: 320px;
+  animation: floatA 26s ease-in-out infinite alternate
+}
+
+/* Positioning and smooth drifting animation for top-right bubble */
+.bubble-tr {
+  right: -90px;
+  top: -80px;
+  width: 300px;
+  height: 300px;
+  animation: floatB 28s ease-in-out infinite alternate
+}
+
+/* Positioning and smooth drifting animation for bottom-left bubble */
+.bubble-bl {
+  left: -110px;
+  bottom: -70px;
+  width: 280px;
+  height: 280px;
+  animation: floatC 27s ease-in-out infinite alternate
+}
+
+/* Positioning and smooth drifting animation for bottom-right bubble */
+.bubble-br {
+  right: -90px;
+  bottom: -90px;
+  width: 300px;
+  height: 300px;
+  animation: floatD 30s ease-in-out infinite alternate
+}
+
+/* Spin keyframe for the rainbow rim */
+@keyframes spin {
+  from {
+    transform: rotate(0)
+  }
+
+  to {
+    transform: rotate(360deg)
+  }
+}
+
+/* Floating animations for bubbles with smooth translation */
+@keyframes floatA {
+  from {
+    transform: translate(0, 0)
+  }
+
+  to {
+    transform: translate(10px, 8px)
+  }
+}
+
+@keyframes floatB {
+  from {
+    transform: translate(0, 0)
+  }
+
+  to {
+    transform: translate(-9px, 11px)
+  }
+}
+
+@keyframes floatC {
+  from {
+    transform: translate(0, 0)
+  }
+
+  to {
+    transform: translate(8px, -8px)
+  }
+}
+
+@keyframes floatD {
+  from {
+    transform: translate(0, 0)
+  }
+
+  to {
+    transform: translate(-10px, -9px)
+  }
+}
+
+/* ===== Responsive Adjustments for Bubbles ===== */
+@media (max-width:768px) {
+  .bubble-tl {
+    left: -110px;
+    top: -110px;
+    width: 260px;
+    height: 260px
+  }
+
+  .bubble-tr {
+    right: -110px;
+    top: -90px;
+    width: 240px;
+    height: 240px
+  }
+
+  .bubble-bl {
+    left: -120px;
+    bottom: -90px;
+    width: 240px;
+    height: 240px
+  }
+
+  .bubble-br {
+    right: -90px;
+    bottom: -110px;
+    width: 240px;
+    height: 240px
+  }
+}
+
+/* Disable animations if user prefers reduced motion */
+@media (prefers-reduced-motion:reduce) {
+
+  .bubble::before,
+  .bubble,
+  .bubble::after {
+    animation: none
+  }
+}
+
+/* ===== Layout Container ===== */
+/* Central container with max width, padding, and centered text */
+.container {
+  position: relative;
+  z-index: 10;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 120px 24px 88px;
+  text-align: center
+}
+
+/* ===== Headings and Text ===== */
+/* Main title with responsive font size and heavy weight */
+.title {
+  font-size: clamp(2.8rem, 5.6vw, 4.6rem);
+  font-weight: 800;
+  margin: 0
+}
+
+/* Subtitle with responsive size and slight opacity */
+.subtitle {
+  font-size: clamp(1.6rem, 3.3vw, 2.4rem);
+  opacity: .95;
+  margin: .45rem 0 0
+}
+
+/* Lead paragraph with max width, muted color, and comfortable line height */
+.lead {
+  max-width: 760px;
+  margin: 16px auto 0;
+  color: var(--muted);
+  font-size: clamp(1.02rem, 2vw, 1.16rem);
+  line-height: 1.6
+}
+
+/* ===== Buttons ===== */
+/* Container for call-to-action buttons with flex layout */
+.cta {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 26px 0 0
+}
+
+/* Base button styling with padding, border, and transition */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px 24px;
+  border-radius: 14px;
+  text-decoration: none;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  backdrop-filter: blur(6px);
+  transition: transform .1s ease, box-shadow .25s ease, background .25s ease
+}
+
+/* Primary button background and shadow */
+.btn-primary {
+  background: rgba(255, 255, 255, .10);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .22), 0 10px 28px rgba(59, 187, 255, .18)
+}
+
+/* Primary button hover effect */
+.btn-primary:hover {
+  background: rgba(255, 255, 255, .18);
+  transform: translateY(-1px)
+}
+
+/* Outline button with transparent background and shadow */
+.btn-outline {
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .22), 0 10px 28px rgba(147, 102, 255, .17)
+}
+
+/* Outline button hover effect */
+.btn-outline:hover {
+  background: rgba(255, 255, 255, .10);
+  transform: translateY(-1px)
+}
+
+/* ===== Logos Strip ===== */
+/* Flex container for logos with spacing and opacity */
+.logo-strip {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  align-items: center;
+  margin: 18px 0 8px;
+  opacity: .96
+}
+
+/* Logo images with fixed height, optimized rendering, and drop shadow */
+.logo-strip img {
+  height: 20px;
+  width: auto;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, .12));
+  transition: transform .15s ease, filter .2s ease
+}
+
+/* Logo hover effect: scale up and stronger shadow */
+.logo-strip img:hover {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, .35))
+}
+
+/* ===== Feature Cards ===== */
+/* Features grid layout with responsive column count */
+.features {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 16px
+}
+
+@media (min-width:640px) {
+  .features {
+    grid-template-columns: repeat(2, 1fr)
+  }
+}
+
+@media (min-width:1024px) {
+  .features {
+    grid-template-columns: repeat(3, 1fr)
+  }
+}
+
+/* Individual card styling with border, background, padding, and rounded corners */
+.card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--glass);
+  border-radius: 18px;
+  padding: 20px;
+  text-align: left
+}
+
+/* Card glowing border effect using conic gradient and blur */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(from 180deg at 50% 50%, #3bbfff, #9366ff, #3ff699, #f36699, #3bbfff);
+  filter: blur(18px);
+  opacity: .22;
+  transition: .25s ease;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 1px
+}
+
+/* Increase glow opacity on card hover */
+.card:hover::after {
+  opacity: .45
+}
+
+/* Mini logo container margin */
+.mini-logo {
+  margin-bottom: 10px
+}
+
+/* Mini logo image sizing and drop shadow */
+.mini-logo img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, .12))
+}
+
+/* Card heading styling */
+.card h3 {
+  margin: 6px 0 4px;
+  font-size: 1.12rem
+}
+
+/* Card paragraph styling with muted color */
+.card p {
+  margin: 0;
+  color: rgba(255, 255, 255, .80);
+  font-size: .95rem
+}
+
+/* Caps style for section headers with letter spacing and muted color */
+.caps {
+  letter-spacing: .25em;
+  color: rgba(255, 255, 255, .72);
+  font-size: .84rem;
+  margin: 32px 0 12px
+}
+
+/* ===== Certification Badges ===== */
+/* Grid layout for badges with responsive column count */
+.badge-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, 1fr)
+}
+
+@media (min-width:768px) {
+  .badge-grid {
+    grid-template-columns: repeat(3, 1fr)
+  }
+}
+
+@media (min-width:1100px) {
+  .badge-grid {
+    grid-template-columns: repeat(6, 1fr)
+  }
+}
+
+/* Individual badge styling with border, background, padding, and rounded corners */
+.badge-item {
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--glass);
+  border-radius: 16px;
+  padding: 8px;
+  transition: transform .08s ease, box-shadow .25s ease
+}
+
+/* Badge hover effect: slight lift and shadow */
+.badge-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 14px rgba(255, 255, 255, .12)
+}
+
+/* Badge image styling with fixed height and drop shadow */
+.badge-img {
+  width: 100%;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 12px rgba(0, 0, 0, .28))
+}
+
+/* ===== Footer ===== */
+/* Footer styling with top border, padding, and muted text color */
+.footer {
+  margin-top: 38px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  color: rgba(255, 255, 255, .72)
+}
+
+/* Links container with flex layout and spacing */
+.links {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  margin-bottom: 6px
+}
+
+/* Link styling with color and opacity */
+.links a {
+  color: var(--fg);
+  text-decoration: none;
+  opacity: .88
+}
+
+/* Link hover effect: full opacity and underline */
+.links a:hover {
+  opacity: 1;
+  text-decoration: underline;
+  text-underline-offset: 4px
+}

@@ -1,11 +1,11 @@
 ############################################
-# Monitoring — Prometheus + Grafana
-# Purpose: one-node observability with admin secret in SSM
+# Monitoring stack — Prometheus + Grafana
+# - Secure Grafana admin password in SSM (SecureString)
+# - Namespace "monitoring"
+# - kube-prometheus-stack via Helm with NodePorts
 ############################################
 
-############################################
-# Grafana admin password — strong random
-############################################
+# Random strong Grafana admin password
 resource "random_password" "grafana_admin" {
   length           = 24
   special          = true
@@ -16,9 +16,7 @@ resource "random_password" "grafana_admin" {
   min_special      = 1
 }
 
-############################################
-# Grafana admin password — store in SSM SecureString
-############################################
+# Store password securely in SSM (kept out of code/state)
 resource "aws_ssm_parameter" "grafana_admin" {
   name        = "/helmkube/grafana/admin_password"
   description = "Grafana admin password (managed by Terraform)"
@@ -31,18 +29,14 @@ resource "aws_ssm_parameter" "grafana_admin" {
   }
 }
 
-############################################
-# Grafana admin password — fetch decrypted for K8s Secret
-############################################
+# Read back the password (decrypted) to inject into a K8s Secret
 data "aws_ssm_parameter" "grafana_admin" {
   name            = aws_ssm_parameter.grafana_admin.name
   with_decryption = true
   depends_on      = [aws_ssm_parameter.grafana_admin]
 }
 
-############################################
-# Kubernetes namespace — monitoring
-############################################
+# Create "monitoring" namespace (after kubeconfig is available)
 resource "kubernetes_namespace" "monitoring" {
   metadata {
     name = "monitoring"
@@ -55,9 +49,7 @@ resource "kubernetes_namespace" "monitoring" {
   depends_on = [null_resource.fetch_kubeconfig]
 }
 
-############################################
-# Kubernetes Secret — grafana-admin (username/password)
-############################################
+# K8s Secret with Grafana admin credentials (referenced by Helm values)
 resource "kubernetes_secret" "grafana_admin" {
   metadata {
     name      = "grafana-admin"
@@ -78,9 +70,7 @@ resource "kubernetes_secret" "grafana_admin" {
   ]
 }
 
-############################################
-# Helm — kube-prometheus-stack (Grafana + Prometheus)
-############################################
+# kube-prometheus-stack (Prometheus + Grafana + Alertmanager)
 resource "helm_release" "prometheus" {
   depends_on       = [null_resource.fetch_kubeconfig, kubernetes_secret.grafana_admin, kubernetes_namespace.monitoring]
   name             = "prometheus"
@@ -117,9 +107,7 @@ resource "helm_release" "prometheus" {
           type     = "NodePort"
           nodePort = 30992
         }
-        alertmanagerSpec = {
-          replicas = 1
-        }
+        alertmanagerSpec = { replicas = 1 }
         config = {
           global    = {}
           route     = { receiver = "null" }

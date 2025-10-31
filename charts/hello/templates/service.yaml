@@ -1,0 +1,18 @@
+############################################
+# Kubernetes Service — exposes the "hello" app via NodePort for external access
+############################################
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-svc
+  labels:
+    app: hello
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app: hello
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      nodePort: {{ .Values.service.nodePort }}
