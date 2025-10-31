@@ -1,0 +1,7 @@
+infra/build/
+*.zip
+*.pem
+*.tfstate*
+/.terraform/
+node_modules/
+.DS_Store
