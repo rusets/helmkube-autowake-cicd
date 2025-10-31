@@ -42,7 +42,36 @@ auto-wake and auto-sleep Lambdas, Prometheus + Grafana stack, and zero-cost idle
 │   ├── outputs.tf           # Safe outputs only
 │   ├── variables.tf         # Variables + validation
 │   └── templates/user_data.sh.tmpl
-└── architecture.png          # Architecture diagram
+└── architecture.png          # 🧭 Architecture (Helmkube Autowake CICD)
+
+```mermaid
+flowchart TD
+  user[User Browser] -->|HTTPS| apigw[API Gateway (HTTP)]
+  apigw -->|Invoke| wake[Lambda: wake_instance]
+  scheduler[EventBridge Scheduler] -->|rate(1m)| sleep[Lambda: sleep_instance]
+
+  wake -->|Start/Describe| ec2[EC2 k3s node]
+  sleep -->|Stop| ec2
+  wake -->|Read/Write| ssm[SSM Parameter /neon-portfolio/last_heartbeat]
+  sleep -->|Read| ssm
+
+  subgraph vpc[VPC]
+    ec2 -->|NodePort 30080| svc[Service hello-svc]
+    svc --> pod[Pod: hello (Docker)]
+    ec2 -.->|kubectl / Helm| helm[Helm chart "hello"]
+    ecr[ECR repository] --> pod
+    subgraph mon[Monitoring]
+      grafana[Grafana (NodePort 30090)]
+      prom[Prometheus (NodePort 30991)]
+    end
+  end
+
+  cw[CloudWatch Logs] <-->|Function logs| wake
+  cw <-->|Function logs| sleep
+  apigw --> cw
+  s3[S3 bucket assoc-logs] -.->|SSM association output| ec2
+```
+
 ```
 
 ---

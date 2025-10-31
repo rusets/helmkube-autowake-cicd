@@ -52,5 +52,5 @@ resource "aws_scheduler_schedule" "sleep_every_min" {
   }
 
   # Keep resource created but paused; switch to ENABLED when ready
-  state = "DISABLED"
+  state = "ENABLED"
 }

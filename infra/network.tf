@@ -12,29 +12,46 @@ data "aws_subnets" "default" {
   }
 }
 
-
 ############################################
-# Admin IP list (from var.admin_ip) — empty means “no admin-only rules”
-##############################################
+# Admin IP list (from var.admin_ip)
+# Empty string => no admin-only rules
+############################################
 locals {
-  # Normalize input: nil-safe + trim spaces
   admin_ip_clean = var.admin_ip != null ? trimspace(var.admin_ip) : ""
-
-  # Build list only when value provided (else empty list)
-  admin_ip_list = local.admin_ip_clean != "" ? [local.admin_ip_clean] : []
+  admin_ip_list  = local.admin_ip_clean != "" ? [local.admin_ip_clean] : []
 }
 
 ############################################
-# Security Group for k3s node
-# - App NodePort: public (e.g., 30080/30800)
-# - k3s API/Grafana/Prometheus/Alertmanager: admin IP only (if provided)
+# Security Group — k3s node perimeter
+# - 10250 (kubelet metrics) from VPC CIDR
+# - 6443 from VPC CIDR (pods via ClusterIP) + admin /32
+# - App NodePort public
+# - Grafana/Prometheus/Alertmanager only from admin /32 (toggles)
 ############################################
 resource "aws_security_group" "k3s_sg" {
   name        = "${var.project_name}-k3s-sg"
   description = "k3s API, public app NodePort, admin-only dashboards"
   vpc_id      = data.aws_vpc.default.id
 
-  # k3s API — admin IP only
+  # k3s API from VPC CIDR (pods -> API server via ClusterIP)
+  ingress {
+    description = "k3s API from VPC CIDR (pods via ServiceIP)"
+    from_port   = 6443
+    to_port     = 6443
+    protocol    = "tcp"
+    cidr_blocks = [data.aws_vpc.default.cidr_block]
+  }
+
+  # kubelet metrics from VPC CIDR (Prometheus scrape 10250)
+  ingress {
+    description = "Kubelet metrics from VPC CIDR (Prometheus scrape 10250)"
+    from_port   = 10250
+    to_port     = 10250
+    protocol    = "tcp"
+    cidr_blocks = [data.aws_vpc.default.cidr_block]
+  }
+
+  # k3s API admin-only (/32) when provided
   dynamic "ingress" {
     for_each = length(local.admin_ip_list) > 0 ? [1] : []
     content {
@@ -55,7 +72,7 @@ resource "aws_security_group" "k3s_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Grafana — admin IP only (behind toggle)
+  # Grafana — admin-only
   dynamic "ingress" {
     for_each = (var.expose_grafana && length(local.admin_ip_list) > 0) ? [1] : []
     content {
@@ -67,7 +84,7 @@ resource "aws_security_group" "k3s_sg" {
     }
   }
 
-  # Prometheus — admin IP only (behind toggle)
+  # Prometheus — admin-only
   dynamic "ingress" {
     for_each = (var.expose_prometheus && length(local.admin_ip_list) > 0) ? [1] : []
     content {
@@ -79,7 +96,7 @@ resource "aws_security_group" "k3s_sg" {
     }
   }
 
-  # Alertmanager — admin IP only (optional toggle)
+  # Alertmanager — admin-only (toggle)
   dynamic "ingress" {
     for_each = (try(var.expose_alertmanager, false) && length(local.admin_ip_list) > 0) ? [1] : []
     content {
@@ -91,7 +108,7 @@ resource "aws_security_group" "k3s_sg" {
     }
   }
 
-  # Full egress (SSM, package installs, ECR pulls, etc.)
+  # Full egress
   egress {
     from_port   = 0
     to_port     = 0
