@@ -1,7 +1,28 @@
+# Terraform state & providers
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Lockfile — ОСТАВЛЯЕМ в репо
+#! infra/.terraform.lock.hcl
+
+# Build artifacts
 infra/build/
 *.zip
-*.pem
-*.tfstate*
-/.terraform/
+
+# Local kubeconfigs (не храним)
+*/*k3s*.yaml
+k3s*.yaml
+
+# Node / OS junk
 node_modules/
 .DS_Store
+
+# IDE
+.vscode/
+.idea/
