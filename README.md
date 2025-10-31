@@ -42,9 +42,6 @@ auto-wake and auto-sleep Lambdas, Prometheus + Grafana stack, and zero-cost idle
 │   ├── outputs.tf           # Safe outputs only
 │   ├── variables.tf         # Variables + validation
 │   └── templates/user_data.sh.tmpl
-└── architecture.png          # 🧭 Architecture (Helmkube Autowake CICD)
-
-```mermaid
 flowchart TD
   user[User Browser] -->|HTTPS| apigw[API Gateway (HTTP)]
   apigw -->|Invoke| wake[Lambda: wake_instance]
@@ -76,7 +73,42 @@ flowchart TD
 
 ---
 
-## 🏗️ Architecture (high-level)
+## 🗺️ Architecture
+
+```mermaid
+flowchart LR
+  subgraph Client
+    U[User\nBrowser]
+  end
+
+  U -->|Wake request| APIGW[API Gateway (HTTP API)]
+  APIGW --> WAKE[Lambda: wake_instance]
+  WAKE --> EC2[(EC2: k3s node)]
+  WAKE --> SSM[(SSM Parameter Store)]
+  WAKE --> ECR[(ECR: hello image)]
+  EC2 -->|Helm deploy| K8S[(k3s cluster)]
+  K8S --> SVC[Service NodePort 30080]
+  K8S --> PROM[Prometheus 30991]
+  K8S --> GRAF[Grafana 30090]
+
+  subgraph Monitoring
+    PROM
+    GRAF
+  end
+
+  subgraph AutoSleep
+    EVT[EventBridge Scheduler (1 min)]
+    SLP[Lambda: sleep_instance]
+  end
+
+  EVT --> SLP
+  SLP --> EC2
+
+  classDef infra fill:#0b3d3d,stroke:#0b3d3d,color:#fff
+  classDef runtime fill:#0b2a42,stroke:#0b2a42,color:#fff
+  class APIGW,WAKE,SLP,EVT,SSM,ECR infra
+  class EC2,K8S,SVC,PROM,GRAF runtime
+```
 
 **Wake flow:**  
 🌐 User → API Gateway → Lambda (wake_instance.py) → Start EC2 → Wait for K3s → Redirect to App  
@@ -186,11 +218,3 @@ terraform destroy -auto-approve
 ---
 
 ## 🖼️ Architecture diagram
-
-![Architecture](./architecture.png)
-
----
-
-## 📝 License
-MIT © 2025 Ruslan Dashkin  
-_“Built with precision and simplicity — from DevOps to design.”_
