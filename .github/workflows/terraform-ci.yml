@@ -1,0 +1,79 @@
+name: terraform-ci
+
+on:
+  pull_request:
+    paths:
+      - "infra/**/*.tf"
+      - ".github/workflows/terraform-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-fmt-validate:
+    name: terraform fmt + validate (infra/)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      - name: Terraform fmt (check, recursive)
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init (backend disabled)
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform validate -no-color
+
+  tflint:
+    name: tflint (lint infra/)
+    runs-on: ubuntu-latest
+    needs: terraform-fmt-validate
+
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: TFLint init
+        run: tflint --init
+
+      - name: Run TFLint
+        run: tflint -f compact
+
+  tfsec:
+    name: tfsec (security scan, soft-fail)
+    runs-on: ubuntu-latest
+    needs: terraform-fmt-validate
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run tfsec on infra/
+        uses: aquasecurity/tfsec-action@v1
+        with:
+          working_directory: infra
+          additional_args: --format compact
+          soft_fail: true
