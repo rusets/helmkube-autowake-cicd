@@ -5,7 +5,9 @@
   <img src="https://img.shields.io/badge/Kubernetes-k3s-326CE5" />
   <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-lightgrey" />
   <img src="https://img.shields.io/badge/Monitoring-Prometheus%20%2F%20Grafana-green" />
-
+  <br />
+  <img src="https://github.com/rusets/helmkube-autowake-cicd/actions/workflows/terraform-ci.yml/badge.svg" alt="terraform-ci" />
+  
 </p>
 
 # Helmkube Autowake — CI/CD Kubernetes Demo
@@ -202,6 +204,66 @@ It demonstrates **real production principles**:
 | Prometheus scrape gaps | Wrong selectors / blocked ports | Fixed labels, ports, and security group rules |
 | SSM associations “silent failing” | Missing IAM permissions/logging | Updated IAM trust and enabled S3 + CloudWatch logs |
 | Helm deploy inconsistent | k3s not yet accepting connections | Added retry logic and Kubernetes readiness checks |
+
+---
+
+##  Security & CI
+
+### Terraform CI Pipeline
+
+This repository uses an automated GitHub Actions workflow — **terraform-ci**, triggered:
+
+- on every pull request,
+- when Terraform files under `infra/` change,
+- manually via workflow_dispatch.
+
+The pipeline performs full Terraform quality checks:
+
+- `terraform fmt` — formatting  
+- `terraform validate` — syntax & schema validation  
+- `tflint` — best-practice linting  
+- `tfsec` — security scanning
+
+This ensures that all IaC changes pass through strict automated validation.
+
+---
+
+### Security Scans (tfsec)
+
+`tfsec` performs a full AWS security audit across:
+
+- IAM policies  
+- Security Groups  
+- S3 encryption  
+- DynamoDB encryption  
+- Lambda tracing  
+- ECR encryption  
+- CloudWatch log groups  
+- and more
+
+Final status after cleanup:
+
+```
+critical             0
+high                 0
+medium               0
+low                  0
+
+No problems detected!
+```
+
+---
+
+### Why some checks are ignored
+
+A small number of `tfsec` rules are intentionally ignored using `#tfsec:ignore`, because:
+
+- public NodePort is required by design,
+- AWS-managed SSE (`AES256`) is sufficient for demo projects,
+- CMK encryption is unnecessary for temporary SSM logs,
+- strict prod-grade rules would slow down development with no benefit.
+
+These exceptions are explicitly documented in the code next to each ignore.
 
 ---
 
