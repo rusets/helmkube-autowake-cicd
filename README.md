@@ -331,12 +331,16 @@ Or using CLI:
 
 #  Future Work (What I Would Improve Next)
 
-- Improve GitHub Actions pipeline with matrix builds, linting, and security scans  
-- Add Loki (logs) and Tempo (tracing) for full observability coverage  
-- Integrate CloudFront caching layer for global access performance  
-- Implement policy-as-code (OPA, Checkov, tfsec)  
-- Add synthetic uptime checks using Lambda canaries  
-- Expand demo app into a multi-service microservice showcase  
+If I continued developing this platform, I would focus on:
+
+- **Strengthening CI/CD** — splitting validation, linting, security scans, and adding drift detection.
+- **Deepening observability** — integrating Loki + Tempo for full metrics/logs/traces in one place.
+- **Improving global performance** — optional CloudFront caching for faster cold-wakes worldwide.
+- **Enhancing governance** — introducing policy-as-code with OPA/Conftest and Checkov.
+- **Increasing reliability** — synthetic uptime checks, SLOs for wake latency, and automated rollback if k3s fails readiness.
+- **Expanding the application** — evolving it into a small multi-service example with its own CI pipeline.
+
+These steps push the project closer to a production-grade, review-ready platform. 
 
 ---
 
