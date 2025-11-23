@@ -103,7 +103,7 @@ resource "aws_lambda_function" "wake_instance" {
   source_code_hash = data.archive_file.wake_instance.output_base64sha256
 
   tracing_config {
-    mode = "PassThrough"
+    mode = "Active"
   }
 
   environment {
@@ -145,6 +145,10 @@ resource "aws_lambda_function" "sleep_instance" {
   filename         = data.archive_file.sleep_instance.output_path
   source_code_hash = data.archive_file.sleep_instance.output_base64sha256
 
+  tracing_config {
+    mode = "Active"
+  }
+
   depends_on = [
     aws_iam_role_policy_attachment.attach_ec2_ssm
   ]
@@ -180,6 +184,7 @@ resource "aws_apigatewayv2_api" "wake_api" {
 # CloudWatch Log Group — API access logs
 # Purpose: keep structured access logs for HTTP API
 ############################################
+#tfsec:ignore:aws-cloudwatch-log-group-customer-key
 resource "aws_cloudwatch_log_group" "wake_api_access" {
   name              = "/apigw/${var.project_name}/access"
   retention_in_days = 14
