@@ -1,0 +1,162 @@
+name: Deploy (plan/apply)
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Run terraform apply after plan?"
+        type: boolean
+        default: false
+      image_tag:
+        description: "Docker image tag (default: short SHA)"
+        type: string
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: tf-prod
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ROLE_ARN: arn:aws:iam::097635932419:role/helmkube-autowake-gha-role
+  TF_WORKDIR: infra
+
+jobs:
+  plan:
+    name: Terraform plan (no build/push)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Choose IMAGE_TAG
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          fi
+          echo "Using IMAGE_TAG=$IMAGE_TAG"
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Who am I?
+        run: |
+          aws sts get-caller-identity
+          if [ -f infra/backend.hcl ]; then
+            BKT=$(awk -F'= *' '/^bucket/ {gsub(/"/,"",$2); print $2}' infra/backend.hcl || true)
+            if [ -n "$BKT" ]; then aws s3 ls "s3://$BKT" || true; fi
+          fi
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform init -input=false -backend-config=backend.hcl
+
+      - name: Terraform fmt & validate
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: |
+          terraform fmt -check
+          terraform validate
+
+      - name: Terraform plan
+        id: plan
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: |
+          terraform plan \
+            -input=false \
+            -var "image_tag=${IMAGE_TAG}" \
+            -out tfplan
+          terraform show -no-color tfplan > tfplan.txt
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: |
+            ${{ env.TF_WORKDIR }}/tfplan
+            ${{ env.TF_WORKDIR }}/tfplan.txt
+
+  apply:
+    name: Terraform apply (manual + build & push image)
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.apply == 'true' }}
+    needs: [plan]
+    runs-on: ubuntu-latest
+    environment:
+      name: prod
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Choose IMAGE_TAG (same logic)
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          fi
+          echo "Using IMAGE_TAG=$IMAGE_TAG"
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ./plan
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform init -input=false -backend-config=backend.hcl
+
+      - name: Terraform apply (using saved plan)
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform apply -input=false ../plan/tfplan
+
+      - name: Read ECR repo URL from Terraform outputs
+        id: tfout
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: |
+          echo "repo_url=$(terraform output -raw ecr_repo_url)" >> $GITHUB_OUTPUT
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: "true"
+
+      - name: Build & Push Docker image (only after apply)
+        working-directory: app
+        run: |
+          REPO="${{ steps.tfout.outputs.repo_url }}"
+          TAG="${IMAGE_TAG}"
+          docker buildx create --use --name builder || docker buildx use builder
+          docker buildx build \
+            --platform linux/amd64 \
+            -t "${REPO}:${TAG}" \
+            -f Dockerfile \
+            . \
+            --push
+          echo "IMAGE pushed: ${REPO}:${TAG}"

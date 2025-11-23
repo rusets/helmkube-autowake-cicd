@@ -1,0 +1,62 @@
+name: Destroy (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "DESTROY" to confirm'
+        required: true
+        type: string
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ROLE_ARN: arn:aws:iam::097635932419:role/helmkube-autowake-gha-role
+  TF_WORKDIR: infra
+  ECR_REPO_NAME: helmkube-autowake/hello-app
+
+jobs:
+  destroy:
+    if: ${{ github.event.inputs.confirm == 'DESTROY' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Who am I?
+        run: aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform init -input=false -backend-config=backend.hcl
+
+      - name: Terraform destroy (auto-approve)
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform destroy -auto-approve
+
+      - name: Ensure ECR repository is gone (force)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if aws ecr describe-repositories --repository-names "$ECR_REPO_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
+            aws ecr delete-repository --repository-name "$ECR_REPO_NAME" --force --region "$AWS_REGION" || true
+          fi
+
+      - name: Done
+        run: echo "✅ Destroy finished (and ECR cleaned if it existed)."
