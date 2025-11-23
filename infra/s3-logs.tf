@@ -13,6 +13,7 @@ resource "aws_s3_bucket" "assoc_logs" {
 # S3 Server-Side Encryption
 # Purpose: enable default SSE (AES256) for assoc_logs bucket
 ############################################
+#tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket_server_side_encryption_configuration" "assoc_logs" {
   bucket = aws_s3_bucket.assoc_logs.id
 
