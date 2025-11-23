@@ -81,6 +81,7 @@ resource "aws_security_group" "k3s_sg" {
   ############################################
   # NodePort application — publicly accessible
   ############################################
+  #tfsec:ignore:aws-ec2-no-public-ingress-sgr
   ingress {
     description = "App NodePort (public)"
     from_port   = var.node_port
@@ -134,7 +135,9 @@ resource "aws_security_group" "k3s_sg" {
   ############################################
   # Outbound — allow any destination
   ############################################
+  #tfsec:ignore:aws-ec2-no-public-egress-sgr
   egress {
+    description = "Allow all outbound traffic from k3s node"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
