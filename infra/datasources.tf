@@ -14,15 +14,6 @@ data "aws_instances" "by_name_tag" {
 }
 
 ############################################
-# Load detailed info for each candidate ID
-# (state, launch_time, etc.) — keyed by instance_id
-############################################
-data "aws_instance" "candidates" {
-  for_each    = toset(data.aws_instances.by_name_tag.ids)
-  instance_id = each.value
-}
-
-############################################
 # Latest Amazon Linux 2023 AMI (kernel 6.1, x86_64) via SSM public parameter
 ############################################
 data "aws_ssm_parameter" "al2023_latest" {
