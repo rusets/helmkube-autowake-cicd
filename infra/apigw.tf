@@ -109,8 +109,9 @@ resource "aws_lambda_function" "wake_instance" {
       NODE_PORT       = tostring(var.node_port)
       LOCAL_TZ        = "America/Chicago"
 
-      TARGET_URL = local.target_url_effective
-      HEALTH_URL = local.health_url_effective
+      TARGET_URL    = local.target_url_effective
+      HEALTH_URL    = local.health_url_effective
+      WAKE_API_BASE = local.wake_api_base
 
       HEALTHCHECK_TIMEOUT_SEC = "2.5"
       READY_POLL_TOTAL_SEC    = "10"
