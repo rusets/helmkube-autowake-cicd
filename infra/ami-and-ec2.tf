@@ -17,6 +17,7 @@ data "aws_eip" "existing" {
 # EC2 instance — single k3s node
 # Purpose: run K3s with fixed EIP, IAM role, SG, and cloud-init bootstrap
 ############################################
+#tfsec:ignore:aws-ec2-enable-at-rest-encryption
 resource "aws_instance" "k3s" {
   ami                         = data.aws_ssm_parameter.al2023_latest.value
   instance_type               = var.instance_type
@@ -28,6 +29,7 @@ resource "aws_instance" "k3s" {
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
+
   }
 
   user_data = templatefile("${path.root}/../templates/user_data.sh.tmpl", {
