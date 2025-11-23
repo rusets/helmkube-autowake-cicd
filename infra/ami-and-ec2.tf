@@ -1,5 +1,6 @@
 ############################################
-# Elastic IP — reuse existing allocation
+# Elastic IP lookup
+# Purpose: reuse the already allocated EIP for the k3s node
 ############################################
 data "aws_eip" "existing" {
   id = "eipalloc-044ae74e69206a2c0"
@@ -7,6 +8,7 @@ data "aws_eip" "existing" {
 
 ############################################
 # EC2 instance — single k3s node
+# Purpose: run K3s with fixed EIP, IAM role, SG, and cloud-init bootstrap
 ############################################
 resource "aws_instance" "k3s" {
   ami                         = data.aws_ssm_parameter.al2023_latest.value
@@ -16,14 +18,12 @@ resource "aws_instance" "k3s" {
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
   associate_public_ip_address = false
 
-  # IMDSv2 required
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
   }
 
-  # Cloud-init from template (passes resolved EIP and ports)
-  user_data = templatefile("${path.module}/templates/user_data.sh.tmpl", {
+  user_data = templatefile("${path.root}/../templates/user_data.sh.tmpl", {
     region          = var.region
     node_port       = var.node_port
     ecr_repo_url    = aws_ecr_repository.hello.repository_url
@@ -57,7 +57,8 @@ resource "aws_instance" "k3s" {
 }
 
 ############################################
-# EIP → instance association (allow reattach)
+# Elastic IP association
+# Purpose: attach existing EIP to the instance on every wake
 ############################################
 resource "aws_eip_association" "k3s" {
   allocation_id       = data.aws_eip.existing.id

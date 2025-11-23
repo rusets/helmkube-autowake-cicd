@@ -41,14 +41,14 @@ data "aws_caller_identity" "current" {}
 ############################################
 variable "kubeconfig_path" {
   type    = string
-  default = "./build/k3s-embed.yaml"
+  default = "../build/k3s-embed.yaml"
 }
 
 ############################################
 # Locals — decode kubeconfig once and reuse for providers
 ############################################
 locals {
-  kubeconfig_abs = abspath("${path.root}/build/k3s-embed.yaml")
+  kubeconfig_abs = abspath("${path.root}/../build/k3s-embed.yaml")
   kc             = yamldecode(file(local.kubeconfig_abs))
 
   _cluster = local.kc.clusters[0].cluster

@@ -46,7 +46,7 @@ locals {
 
   autodetected_instance_id = length(local.autodetected_priority) > 0 ? local.autodetected_priority[0] : null
 
-  # Full list of matched IDs (for compatibility/debug)
+
   autodetected_ids = try(data.aws_instances.by_name_tag.ids, [])
 }
 

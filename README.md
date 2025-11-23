@@ -1,10 +1,74 @@
-# 🚀 helmkube‑autowake‑cicd
+<p align="center">
 
-Spin up a **cost‑efficient k3s demo** on a single EC2 instance with an **auto‑wake / auto‑sleep** workflow, **Helm‑deployed app**, and optional **Prometheus + Grafana** monitoring. Ideal for portfolio and interviews: clean Terraform, small footprint, and a polished Live Demo.
+  <img src="https://img.shields.io/badge/IaC-Terraform-blueviolet" />
+  <img src="https://img.shields.io/badge/Cloud-AWS-orange" />
+  <img src="https://img.shields.io/badge/Kubernetes-k3s-326CE5" />
+  <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-lightgrey" />
+  <img src="https://img.shields.io/badge/Monitoring-Prometheus%20%2F%20Grafana-green" />
 
-**Live Demo:** https://app.helmkube.site/
+</p>
+
+# Helmkube Autowake — CI/CD Kubernetes Demo
+
+##  Live Demo
+**Wake Page:** https://app.helmkube.site/  
+The EC2 instance wakes on demand (1–3 minutes depending on cold/warm state).
 
 ---
+
+##  Overview
+**Helmkube Autowake** is a production-style Kubernetes environment designed for demos, portfolio, and interviews.  
+It uses a single Amazon Linux 2023 EC2 instance running **k3s**, deployed dynamically through **Terraform**, launched by a **serverless wake workflow**, and shut down automatically by a **sleep scheduler**.
+
+The stack demonstrates:
+- On-demand compute via **API Gateway → Lambda → EC2**
+- Declarative **Helm** deployments for application & monitoring
+- AWS-native automation for wake & sleep lifecycle
+- Kubernetes observability (Prometheus, Grafana)
+- Clean Infrastructure-as-Code structure with Terraform
+
+This project showcases real DevOps and Cloud Engineering skills — not just scripted demos.
+
+---
+
+##  Tech Stack Summary
+- **AWS:** EC2, Lambda, API Gateway, EventBridge, S3, IAM, ECR, SSM Parameter Store  
+- **Kubernetes:** k3s single-node, Helm  
+- **Observability:** Prometheus, Alertmanager, Grafana, kube-state-metrics, node-exporter  
+- **IaC:** Terraform (modular, production-grade), SSM automation, IAM least privilege  
+- **CI/CD:** GitHub Actions (build → push → deploy)  
+- **Security:** SG hardening, admin-only NodePorts, secrets via SSM, no NAT Gateway  
+
+---
+
+## Requirements
+
+- **AWS Account**
+  - Access to EC2, Lambda, API Gateway, EventBridge, S3, ECR, IAM, SSM
+
+- **CLI Tools**
+  - `awscli` (v2 recommended)
+  - `kubectl`
+  - `helm`
+  - `terraform` (1.6+)
+
+- **Local Environment**
+  - macOS / Linux / WSL2  
+  - Docker installed (for app image builds)
+
+- **GitHub Setup**
+  - GitHub Actions enabled  
+  - OIDC trust established between GitHub → AWS IAM
+
+- **Network Requirements**
+  - One **Elastic IP** (static)  
+  - Admin IP (your home IP) for NodePort access
+
+- **Optional (Monitoring)**
+  - +1–2 GB free memory on EC2 for Prometheus/Grafana
+  - Internet access for pulling OCI charts
+
+ ---
 
 ## Architecture (Mermaid)
 
@@ -28,137 +92,269 @@ flowchart TD
   SCH[EventBridge Scheduler 1m] --> SLP[Lambda sleep]
   SLP --> EC2
 ```
-_If GitHub fails to render Mermaid, open the README in a browser with Mermaid enabled. The syntax above is valid._
-
 ---
 
-## What you get
 
-- **k3s on EC2 (Amazon Linux 2023)** with EIP, SSM, IMDSv2, hardened SG.
-- **Helm‑deployed sample app** served via **NodePort**.
-- **Auto‑wake** via API Gateway → Lambda and **auto‑sleep** via EventBridge → Lambda.
-- **Optional monitoring**: Prometheus, Grafana (admin password in SSM `SecureString`).
-- **Clean Terraform layout** with inline kube creds for providers and GitHub‑ready docs.
+##  Components
+
+### Compute & Orchestration
+- EC2 (Amazon Linux 2023)
+- k3s Kubernetes distribution
+- Helm application chart
+- Optional monitoring stack (Prometheus, Grafana, Alertmanager)
+
+### Automation & Control Plane
+- Lambda functions: `wake_instance`, `sleep_instance`
+- API Gateway (HTTP endpoint)
+- EventBridge Scheduler (1-minute interval)
+
+### Infrastructure Services
+- Terraform Infrastructure-as-Code
+- SSM Parameter Store (Grafana password, configs)
+- Amazon ECR (application image registry)
+- CloudWatch Logs & S3 log bucket (Lambda/SSM logging)
 
 ---
 
 ## Repository structure (top‑level)
 
 ```
-.
-├── .git
-├── .github
-├── app
-│   └── public
-├── charts
-│   └── hello
-└── infra
-    ├── build
-    ├── lambda
-    ├── templates
-    ├── providers.tf
-    ├── variables.tf
-    └── helm.tf
+├── app/                     
+│   ├── Dockerfile
+│   ├── server.js
+│   └── public/
+│
+├── charts/
+│   └── hello/               
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
+├── docs
+│   └── screenshots
+├── infra/                   
+│   ├── ami-and-ec2.tf
+│   ├── apigw.tf
+│   ├── build-push.tf
+│   ├── datasources.tf
+│   ├── ecr.tf
+│   ├── helm.tf
+│   ├── iam-ec2.tf
+│   ├── iam-scheduler.tf
+│   ├── monitoring.tf
+│   ├── network.tf
+│   ├── outputs.tf
+│   ├── providers.tf
+│   ├── s3-logs.tf
+│   ├── ssm.tf
+│   ├── ssm-deploy.tf
+│   ├── ssm-logs.tf
+│   ├── variables.tf
+│   │
+│   ├── lambda/              
+│   │   ├── wake_instance.py
+│   │   └── sleep_instance.py
+│   │
+│   ├── templates/
+│   │   └── user_data.sh.tmpl
+│   │
+│   └── build/               
+│       ├── k3s.yaml
+│       ├── k3s-embed.yaml
+│       ├── wake_instance.zip
+│       └── sleep_instance.zip
+│
+└── README.md
 ```
-_This is a concise view meant for the README. Your repo contains additional .tf files that compose the full working stack._
+---
+
+##  Why This Project Matters
+This is not a “Hello World cluster”.  
+It demonstrates **real production principles**:
+
+- On-demand compute lifecycle (wake → run → sleep)
+- Automated IaC provisioning and destruction
+- Serverless orchestration of EC2
+- Secure, optimized single-node Kubernetes for demos
+- Full observability: dashboards, alerts, metrics scraping
+- Cost-efficient architecture (no NAT, no ELB, minimal EC2 uptime)
+- Clean project layout suitable for senior-level code review
+  
+---
+
+#  Lessons Learned
+- How to reduce EC2 → k3s cold-start time using optimized cloud-init  
+- Ensuring Helm waits for API readiness before deployment  
+- Securing NodePort access with admin-IP-only rules  
+- Fixing SSM associations by adding missing IAM trust and logging  
+- Handling transitional EC2 states inside the wake Lambda  
+- Keeping Terraform readable, modular, and suitable for professional review  
+- Pulling monitoring dashboards into a lightweight single-node cluster  
 
 ---
 
-## Quick start
+#  Troubleshooting — Problems & How They Were Solved
 
-### 1) Prerequisites
-- Terraform **1.6+**
-- AWS CLI configured for **us‑east‑1**
-- Docker (optional: for local image build/push)
-
-### 2) Configure variables
-Edit `infra/terraform.tfvars` and set:
-- `project_name`, `admin_ip`, `node_port`, and (optionally) `image_tag`.
-- You already keep secrets out of state; SSM `SecureString` is used for Grafana.
-
-### 3) Build and push the app image (optional — or use any public image)
-```bash
-cd infra
-aws ecr get-login-password --region us-east-1 \
-| docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
-
-docker build -t hello:latest ../app
-docker tag hello:latest <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/helmkube-autowake/hello-app:latest
-docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/helmkube-autowake/hello-app:latest
-```
-**Notes:** The block logs in to ECR, builds the demo app, tags it for your ECR repo, and pushes.
-
-### 4) Deploy
-```bash
-cd infra
-terraform init -input=false
-terraform apply -auto-approve -input=false
-```
-**Notes:** Initializes backend/providers and applies the full stack (EC2, API, Lambdas, Helm, monitoring).
-
-### 5) Test the app
-```bash
-# 1) Wake via API (browser):
-open https://app.helmkube.site/
-
-# 2) Or from CLI (prints HTTP status):
-curl -I https://app.helmkube.site/
-```
-**Notes:** The wake Lambda starts EC2 if needed and serves the app on the configured NodePort.
+| Problem | Root Cause | Solution |
+|--------|------------|----------|
+| Slow wake-up time | k3s API not fully ready | Added readiness polling & boot wait loops |
+| Grafana unreachable | Admin IP not whitelisted | Corrected security group NodePort ingress rules |
+| Wake Lambda looping | EC2 stuck in transitional states | Added state validation, retries, and backoff |
+| Prometheus scrape gaps | Wrong selectors / blocked ports | Fixed labels, ports, and security group rules |
+| SSM associations “silent failing” | Missing IAM permissions/logging | Updated IAM trust and enabled S3 + CloudWatch logs |
+| Helm deploy inconsistent | k3s not yet accepting connections | Added retry logic and Kubernetes readiness checks |
 
 ---
 
-## Security group & ports (quick reference)
+#  Deployment
 
-- **App NodePort**: `30080` — **open to 0.0.0.0/0** (public demo access)
-- **k3s API**: `6443` — **admin IP only** (e.g., `A.B.C.D/32`)
-- **Grafana**: `30090` — **admin IP only** (toggle via `expose_grafana`)
-- **Prometheus**: `30991` — **admin IP only** (toggle via `expose_prometheus`)
-- **Alertmanager**: `30992` — **admin IP only** (toggle via `expose_alertmanager`)
-- **Egress**: full — required for SSM, package installs, ECR pulls, etc.
+## 1) Initialize Terraform
 
-> If metrics look incomplete, ensure your admin IP ingress rules are present and the kubelet/Prometheus scrapes aren’t blocked by the SG. Opening **only** the three NodePorts plus `6443` to your `/32` is sufficient for the demo.
+    cd infra
+    terraform init -input=false
+
+## 2) Deploy the full stack
+
+    terraform apply -auto-approve -input=false
+
+This provisions:
+- IAM roles  
+- EC2 instance  
+- Lambda functions (wake & sleep)  
+- API Gateway (HTTP endpoint)  
+- S3 log bucket  
+- SSM Parameter Store secrets  
+- ECR references  
+- Monitoring stack (optional)  
+- Helm application deployment  
+
+## 3) Test the wake endpoint
+
+    open https://app.helmkube.site/
+
+Or using CLI:
+
+    curl -I https://app.helmkube.site/
+
+## 4) Check k3s readiness after wake
+
+    kubectl --kubeconfig infra/build/k3s-embed.yaml get nodes -o wide
+    kubectl --kubeconfig infra/build/k3s-embed.yaml get svc,pods,deploy -A -o wide
+
+## 5) Tail Lambda logs
+
+    aws logs tail /aws/lambda/helmkube-autowake-wake --follow
+    aws logs tail /aws/lambda/helmkube-autowake-sleep --follow
+
+
+#  Cost Optimization
+
+- **Auto-sleep EC2**  
+  Instance automatically stops when idle, reducing monthly cost close to zero.
+
+- **Single-node k3s instead of EKS**  
+  No control-plane charges, no load balancers — dramatically cheaper.
+
+- **Optional monitoring stack**  
+  Prometheus/Grafana can be disabled via Terraform variables to save compute.
+
+- **Serverless control plane**  
+  Lambda, API Gateway, and EventBridge run in low/free-tier pricing.
+
+- **Minimal ECR usage**  
+  Only one lightweight demo image is stored and pulled.
+
+- **No NAT Gateway required**  
+  Outbound traffic uses public interface → saves ~$32/month per month.
+
+
+#  Future Work (What I Would Improve Next)
+
+- Improve GitHub Actions pipeline with matrix builds, linting, and security scans  
+- Add Loki (logs) and Tempo (tracing) for full observability coverage  
+- Integrate CloudFront caching layer for global access performance  
+- Implement policy-as-code (OPA, Checkov, tfsec)  
+- Add synthetic uptime checks using Lambda canaries  
+- Expand demo app into a multi-service microservice showcase  
 
 ---
 
-## Common operations
+# ❓ FAQ
 
-```bash
-# Show key outputs
-cd infra
-terraform output
+**How long does wake-up take?**  
+Usually 1–3 minutes depending on cold/warm state of the EC2 instance.
 
-# Tail Lambda logs (replace names if customized)
-aws logs tail /aws/lambda/helmkube-autowake-wake --follow --region us-east-1
-aws logs tail /aws/lambda/helmkube-autowake-sleep --follow --region us-east-1
+**Where is the kubeconfig stored?**  
+It is generated into:  
+`infra/build/k3s-embed.yaml`
 
-# Check k3s readiness (after kubeconfig is fetched to infra/build/k3s-embed.yaml)
-kubectl --kubeconfig infra/build/k3s-embed.yaml get nodes -o wide
-kubectl --kubeconfig infra/build/k3s-embed.yaml get svc,deploy,pods -A -o wide
-```
-**Notes:** Outputs show URLs, IDs, and helpful hints. CloudWatch tails Lambda logs. `kubectl` checks cluster state.
+**Can I deploy my own Docker image?**  
+Yes — push your image to ECR and update Helm values in the hello chart.
 
----
+**Can this project run in any AWS region?**  
+Yes — just update the provider region and AMI filters.
 
-## Troubleshooting
+**Is monitoring required?**  
+No — Prometheus, Grafana, and Alertmanager are optional (controlled via Terraform variables).
 
-- **Mermaid fails to render on GitHub** — Your diagram is valid; some clients disable Mermaid. View from a browser with Mermaid enabled.
-- **Wake loops / app slow to appear** — The wake Lambda polls for readiness. If your instance is cold, give it 1–3 minutes.
-- **Grafana/Prometheus unreachable** — Confirm admin IP NodePorts are open and the SG is attached to the instance.
-- **SSM association logs** — Look in the S3 bucket `${project_name}-assoc-logs/ssm-assoc/` and CloudWatch log groups prefixed with `/ssm/assoc/`.
+**Does this require a NAT Gateway?**  
+No — which significantly reduces cost.
 
----
+### ❓ Why does the app redirect from HTTPS → HTTP?
 
-## Cleanup
+The wake page (https://app.helmkube.site/) is HTTPS because it’s served by CloudFront + S3.
 
-```bash
-cd infra
-terraform destroy -auto-approve -input=false
-```
-**Notes:** Tears down API, Lambdas, ECR (force delete), EC2, and monitoring resources created by this stack.
+But the application itself runs on a NodePort inside k3s, exposed directly on the EC2 public IP.
+NodePort does not provide TLS termination and isn’t behind a Load Balancer.
+
+Therefore the app is accessed over plain HTTP, which is expected for single-node k3s setups.
 
 ---
 
-## License
+#  Screenshots
+## Cluster Resource Overview
+![Cluster Resource Overview](./docs/screenshots/grafana-cluster-overview.png)
+**Shows:** total CPU usage, memory usage, request/limit commitment, and live cluster-wide resource consumption.
 
-MIT
+## Node Pods Resource Usage
+![Node Pods Resource Usage](./docs/screenshots/grafana-node-pods.png)
+**Shows:** per-pod CPU & memory usage on the single EC2 node, including Prometheus, Grafana, Traefik, metrics-server, and demo workload.
+
+## Workload (hello) Metrics
+![Workload hello CPU & Memory](./docs/screenshots/grafana-workload-hello.png)
+**Shows:** CPU & RAM usage of the demo workload `hello`, proving Prometheus scraping works and metrics flow into Grafana dashboards.
+
+## Cluster Networking (RX/TX Bandwidth)
+![Cluster Networking Overview](./docs/screenshots/grafana-networking-cluster.png)
+**Shows:** per-namespace network throughput (monitoring, kube-system, default), RX/TX rates, and packet flow across the cluster.
+
+## Alertmanager Overview
+![Alertmanager Overview](./docs/screenshots/grafana-alertmanager-overview.png)
+**Shows:** Alertmanager alert rate, alert delivery graph, and confirms alerting pipeline is functioning with Prometheus operator stack.
+
+## Prometheus Targets
+![Prometheus Targets](./docs/screenshots/prometheus-targets.png)
+**Shows:** all Prometheus scrape targets (ServiceMonitors) are UP: kubelet, apiserver, coredns, node-exporter, kube-state-metrics, Grafana, Alertmanager.
+
+## Kubernetes Nodes & Pods
+![Kubernetes Nodes and Pods](./docs/screenshots/kubectl-nodes-pods.png)
+**Shows:** EC2 node status + full list of all pods across all namespaces, with READY/STATUS columns—verifying healthy k3s cluster.
+
+## Kubernetes Services
+![Kubernetes Services](./docs/screenshots/kubectl-services.png)
+**Shows:** all cluster services including Traefik LoadBalancer, Prometheus NodePorts, Grafana NodePort, metrics-server, kube-dns.
+
+## EC2 Instance (DescribeInstance)
+![EC2 Describe Instance](./docs/screenshots/ec2-describe-instance.png)
+**Shows:** EC2 instance type, private IP, AMI, IAM Instance Profile, launch time—proves AWS infra layer is healthy and configured.
+
+## Security Group (Inbound Rules)
+![Security Group Inbound Rules](./docs/screenshots/security-group-inbound.png)
+**Shows:** controlled inbound traffic: admin-only ports for Grafana/Prometheus/k3s API, NodePort app open to 0.0.0.0/0 for demo.
+
+---
+
+#  License
+
+- Released under the **MIT License** — free to use, modify, and learn from.
+- © Ruslan Dashkin (“🚀 Ruslan AWS”).
+- The “🚀 Ruslan AWS” branding and all related visuals are protected; commercial reuse or rebranding is prohibited without permission.
