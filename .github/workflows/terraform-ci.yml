@@ -43,7 +43,8 @@ jobs:
           users:
           - name: dummy
             user:
-              token: dummy
+              client-certificate-data: ZHVtbXk=
+              client-key-data: ZHVtbXk=
           EOF
 
       - name: Setup Terraform
