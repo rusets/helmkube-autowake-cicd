@@ -24,7 +24,6 @@ data "aws_instance" "candidates" {
 ############################################
 # Pick the most recent instance with safe priority:
 # running → pending → stopping → stopped
-# Also expose the full matched ID list for debugging
 ############################################
 locals {
   by_state_running  = [for i in data.aws_instance.candidates : "${i.launch_time}|${i.id}" if i.instance_state == "running"]
@@ -43,11 +42,6 @@ locals {
     local.latest_stopping_id,
     local.latest_stopped_id,
   ])
-
-  autodetected_instance_id = length(local.autodetected_priority) > 0 ? local.autodetected_priority[0] : null
-
-
-  autodetected_ids = try(data.aws_instances.by_name_tag.ids, [])
 }
 
 ############################################
