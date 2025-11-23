@@ -1,9 +1,6 @@
 ############################################
-# Fetch kubeconfig from the k3s node via SSM
-# - Waits for EC2 + SSM
-# - Reads /etc/rancher/k3s/k3s.yaml
-# - Rewrites server: to use the instance public DNS/IP
-# - Waits for /readyz and prints nodes
+# Fetch kubeconfig from k3s node via SSM
+# Purpose: pull k3s.yaml, rewrite server to public host, wait for /readyz
 ############################################
 resource "null_resource" "fetch_kubeconfig" {
   count = var.use_ssm_deploy ? 0 : 1
@@ -118,9 +115,8 @@ PY
 }
 
 ############################################
-# Create/refresh ECR Docker auth secret in the cluster
-# - Generates ecr-dockercfg in default ns
-# - Idempotent: uses kubectl apply
+# ECR Docker auth secret (cluster)
+# Purpose: create/refresh ecr-dockercfg in default namespace via kubectl
 ############################################
 resource "null_resource" "apply_ecr_secret" {
   count      = var.use_ssm_deploy ? 0 : 1
@@ -151,9 +147,8 @@ resource "null_resource" "apply_ecr_secret" {
 }
 
 ############################################
-# Helm deploy/upgrade for hello chart
-# - Renders a minimal values.yaml with fixed NodePort
-# - Waits for rollout and prints cluster objects
+# Helm deploy/upgrade "hello" chart
+# Purpose: render values.yaml with fixed NodePort and wait for rollout
 ############################################
 resource "null_resource" "helm_deploy_hello" {
   count      = var.use_ssm_deploy ? 0 : 1

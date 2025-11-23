@@ -1,5 +1,6 @@
 ############################################
-# Default VPC & Subnets (data sources)
+# Default VPC and Subnets
+# Purpose: fetch default AWS VPC and its subnets for networking context
 ############################################
 data "aws_vpc" "default" {
   default = true
@@ -13,8 +14,8 @@ data "aws_subnets" "default" {
 }
 
 ############################################
-# Admin IP list (from var.admin_ip)
-# Empty string => no admin-only rules
+# Admin IP Normalization
+# Purpose: ensure admin_ip is usable as /32 list or empty
 ############################################
 locals {
   admin_ip_clean = var.admin_ip != null ? trimspace(var.admin_ip) : ""
@@ -22,18 +23,17 @@ locals {
 }
 
 ############################################
-# Security Group — k3s node perimeter
-# - 10250 (kubelet metrics) from VPC CIDR
-# - 6443 from VPC CIDR (pods via ClusterIP) + admin /32
-# - App NodePort public
-# - Grafana/Prometheus/Alertmanager only from admin /32 (toggles)
+# Security Group — k3s Node Perimeter
+# Purpose: expose API, NodePort app, metrics, dashboards
 ############################################
 resource "aws_security_group" "k3s_sg" {
   name        = "${var.project_name}-k3s-sg"
   description = "k3s API, public app NodePort, admin-only dashboards"
   vpc_id      = data.aws_vpc.default.id
 
-  # k3s API from VPC CIDR (pods -> API server via ClusterIP)
+  ############################################
+  # k3s API — intra-VPC access for pods/services
+  ############################################
   ingress {
     description = "k3s API from VPC CIDR (pods via ServiceIP)"
     from_port   = 6443
@@ -42,7 +42,20 @@ resource "aws_security_group" "k3s_sg" {
     cidr_blocks = [data.aws_vpc.default.cidr_block]
   }
 
-  # kubelet metrics from VPC CIDR (Prometheus scrape 10250)
+  ############################################
+  # k3s API — public EIP /32 required for API-server metrics scrape
+  ############################################
+  ingress {
+    description = "k3s API (self-scrape EIP for Prometheus metrics)"
+    from_port   = 6443
+    to_port     = 6443
+    protocol    = "tcp"
+    cidr_blocks = ["54.88.152.10/32"]
+  }
+
+  ############################################
+  # Kubelet metrics — Prometheus access from VPC only
+  ############################################
   ingress {
     description = "Kubelet metrics from VPC CIDR (Prometheus scrape 10250)"
     from_port   = 10250
@@ -51,7 +64,9 @@ resource "aws_security_group" "k3s_sg" {
     cidr_blocks = [data.aws_vpc.default.cidr_block]
   }
 
-  # k3s API admin-only (/32) when provided
+  ############################################
+  # k3s API — admin-only direct access from home IP
+  ############################################
   dynamic "ingress" {
     for_each = length(local.admin_ip_list) > 0 ? [1] : []
     content {
@@ -63,7 +78,9 @@ resource "aws_security_group" "k3s_sg" {
     }
   }
 
-  # App NodePort — public
+  ############################################
+  # NodePort application — publicly accessible
+  ############################################
   ingress {
     description = "App NodePort (public)"
     from_port   = var.node_port
@@ -72,7 +89,9 @@ resource "aws_security_group" "k3s_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Grafana — admin-only
+  ############################################
+  # Grafana dashboard — admin-only access
+  ############################################
   dynamic "ingress" {
     for_each = (var.expose_grafana && length(local.admin_ip_list) > 0) ? [1] : []
     content {
@@ -84,7 +103,9 @@ resource "aws_security_group" "k3s_sg" {
     }
   }
 
-  # Prometheus — admin-only
+  ############################################
+  # Prometheus dashboard — admin-only access
+  ############################################
   dynamic "ingress" {
     for_each = (var.expose_prometheus && length(local.admin_ip_list) > 0) ? [1] : []
     content {
@@ -96,7 +117,9 @@ resource "aws_security_group" "k3s_sg" {
     }
   }
 
-  # Alertmanager — admin-only (toggle)
+  ############################################
+  # Alertmanager dashboard — admin-only access
+  ############################################
   dynamic "ingress" {
     for_each = (try(var.expose_alertmanager, false) && length(local.admin_ip_list) > 0) ? [1] : []
     content {
@@ -108,7 +131,9 @@ resource "aws_security_group" "k3s_sg" {
     }
   }
 
-  # Full egress
+  ############################################
+  # Outbound — allow any destination
+  ############################################
   egress {
     from_port   = 0
     to_port     = 0
@@ -116,6 +141,9 @@ resource "aws_security_group" "k3s_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ############################################
+  # Metadata and lifecycle
+  ############################################
   tags = {
     Name    = "${var.project_name}-k3s-sg"
     Project = var.project_name

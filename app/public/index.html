@@ -1,131 +1,444 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <!-- Document metadata and styles -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ruslan Dashkin — DevOps & Cloud Engineer</title>
-  <meta name="description" content="Ruslan Dashkin — DevOps & Cloud Engineer. AWS, Terraform, Kubernetes, CI/CD." />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css" />
-</head>
+  <title>HelmKube Autowake — Ruslan AWS</title>
+  <meta name="description" content="Zero-cost-at-idle K3s demo with API Gateway + Lambda wake/sleep, Terraform, Helm, Prometheus & Grafana, and an S3+CloudFront wait page — by Ruslan AWS." />
 
+  <style>
+    * { box-sizing: border-box; }
+    :root{
+      --bg: #0a0b10;
+      --text: #e8f0ff;
+      --muted: #a9b0c7;
+      --card: rgba(255,255,255,0.04);
+      --card-2: rgba(255,255,255,0.06);
+      --accent: #7aa2ff;
+      --ring: 0 0 0 1px rgba(255,255,255,0.12) inset;
+      --radius: 18px;
+      --glow: drop-shadow(0 0 18px rgba(120,180,255,.5));
+    }
+    html, body { height: 100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background: radial-gradient(1000px 800px at 10% 10%, #0b1230 0%, #080a16 45%, #07090f 60%, #05070b 100%), #05070b;
+      overflow-x: hidden;
+    }
+
+    .stars, .twinkles {
+      position: fixed; inset: 0; pointer-events: none; z-index: -1;
+      background-repeat: repeat;
+      opacity: .35;
+      animation: drift 120s linear infinite;
+    }
+    .stars{
+      background-image:
+        radial-gradient(2px 2px at 20px 30px, #c8d2ff 40%, transparent 42%),
+        radial-gradient(1.5px 1.5px at 120px 80px, #8fdcff 40%, transparent 42%),
+        radial-gradient(1.5px 1.5px at 250px 150px, #ffffff 40%, transparent 42%),
+        radial-gradient(2px 2px at 420px 70px, #a0c8ff 40%, transparent 42%);
+      background-size: 600px 400px;
+    }
+    .twinkles{
+      background-image:
+        radial-gradient(2px 2px at 50px 60px, #ffc8f0 40%, transparent 42%),
+        radial-gradient(1.5px 1.5px at 300px 220px, #b5ffea 40%, transparent 42%);
+      background-size: 800px 600px;
+      opacity:.25;
+      animation-duration: 160s;
+    }
+    @keyframes drift {
+      from { transform: translate3d(0,0,0); }
+      to   { transform: translate3d(-200px,-120px,0); }
+    }
+
+    .rgb-ring{
+      position: relative;
+      border-radius: var(--radius);
+      background:
+        linear-gradient(135deg, rgba(255,0,90,0.35), rgba(0,220,255,0.35)) padding-box,
+        linear-gradient(90deg, #ff3d81, #5f86ff, #4dffb8, #ffed6f, #ff3d81) border-box;
+      border: 2px solid transparent;
+    }
+    .glow{ filter: var(--glow); }
+
+    .brand-pill{
+      position: fixed;
+      left: 18px;
+      top: 16px;
+      z-index: 20;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(6,16,32,0.96), rgba(10,26,56,0.96));
+      border: 1px solid rgba(255,255,255,0.16);
+      backdrop-filter: blur(10px);
+      text-decoration: none;
+      color: #e9f3ff;
+      font-weight: 700;
+      letter-spacing: .2px;
+      font-size: 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+    }
+    .brand-pill span{
+      background: linear-gradient(90deg,#7ae4ff,#9f8bff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .wrap{ width: min(1120px, 92vw); margin: 86px auto 72px; }
+    header.hero{
+      display: grid;
+      gap: 16px;
+      padding: 26px;
+      border-radius: calc(var(--radius) + 4px);
+      background: linear-gradient(180deg, rgba(10,15,40,0.6), rgba(5,8,16,0.6));
+      border: 1px solid rgba(255,255,255,0.09);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::after{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(500px 220px at 30% -10%, rgba(80,140,255,.25), transparent 60%),
+        radial-gradient(600px 260px at 85% 0%, rgba(255,120,220,.18), transparent 60%);
+      pointer-events:none;
+      z-index:0;
+      mix-blend-mode: screen;
+    }
+    .title{
+      font-size: clamp(28px, 4.5vw, 44px);
+      font-weight: 800;
+      letter-spacing: .3px;
+    }
+    .subtitle{
+      color: var(--muted);
+      font-size: clamp(14px, 2vw, 18px);
+      line-height: 1.6;
+    }
+    .cta{
+      display:flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 10px;
+      z-index:1;
+    }
+
+    .btn{
+      --padx: 16px;
+      --pady: 12px;
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding: var(--pady) var(--padx);
+      font-weight: 700;
+      letter-spacing:.2px;
+      text-decoration:none;
+      color: #0b1020;
+      background: linear-gradient(90deg, #9ad0ff, #80ffd7);
+      border-radius: 999px;
+      border:0;
+      box-shadow: 0 10px 28px rgba(110, 210, 255, .2);
+      transform: translateZ(0);
+      transition: transform .15s ease, box-shadow .2s ease;
+    }
+    .btn:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 12px 36px rgba(120, 230, 255, .26);
+    }
+    .btn.ghost{
+      color: var(--text);
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.18);
+      backdrop-filter: blur(4px);
+    }
+
+    .grid{
+      display:grid;
+      gap: 16px;
+      grid-template-columns: repeat(12, 1fr);
+      margin-top: 22px;
+    }
+    .card{
+      grid-column: span 12;
+      background: linear-gradient(180deg, var(--card), var(--card-2));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      padding: 18px 18px 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card h3{ margin:2px 0 8px; font-size: 18px; letter-spacing:.2px; }
+    .card p{ margin:8px 0; color: var(--muted); line-height: 1.65; }
+    .card ul{ margin:8px 0 2px 18px; color: var(--muted); line-height: 1.6; }
+    .card code, .card pre{
+      background: rgba(0,0,0,0.35);
+      color: #e3f3ff;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 10px 12px;
+      border-radius: 12px;
+      display:block;
+      overflow:auto;
+      font-size: 13px;
+    }
+    .span-6{ grid-column: span 6; }
+    .span-4{ grid-column: span 4; }
+    .span-8{ grid-column: span 8; }
+
+    @media (max-width: 980px){
+      .span-6, .span-4, .span-8{ grid-column: span 12; }
+    }
+
+    .chip{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight:700;
+      background: linear-gradient(90deg, rgba(125,170,255,.25), rgba(130,255,210,.22));
+      color:#eaf6ff;
+      border:1px solid rgba(255,255,255,.18);
+    }
+
+    .pulse{
+      position: relative;
+      border-radius: var(--radius);
+    }
+    .pulse::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      z-index:-1;
+      border-radius: inherit;
+      background: conic-gradient(from 0deg, #69f, #9f6, #fc6, #f6f, #69f);
+      filter: blur(16px);
+      opacity:.22;
+      animation: spin 8s linear infinite;
+    }
+    @keyframes spin{ to{ transform: rotate(1turn); } }
+
+    footer{
+      color: var(--muted);
+      text-align:center;
+      margin: 34px 0 60px;
+      font-size: 13px;
+    }
+    a.inline{
+      color: #a7c8ff;
+      text-decoration: none;
+    }
+    a.inline:hover{ text-decoration: underline; }
+  </style>
+</head>
 <body>
-  <!-- Brand pill with logo and name -->
-  <div class="brand" aria-label="Ruslan AWS">
-    <svg class="rocket" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 13c3-6 7-9 12-11l-1 4 3 3 4-1c-2 5-5 9-11 12l-1-3-3-3-3 1zM3 21l4-1-3-3-1 4z" fill="currentColor" />
-    </svg>
-    <span>Ruslan AWS</span>
+  <div class="stars"></div>
+  <div class="twinkles"></div>
+
+  <a class="brand-pill rgb-ring glow" href="https://rusets.com" target="_blank" rel="noopener">
+    🚀 <span>Ruslan AWS</span>
+  </a>
+
+  <div class="wrap">
+    <header class="hero pulse">
+      <div class="title">HelmKube Autowake — Zero-Cost-at-Idle K3s Demo</div>
+      <div class="subtitle">
+        API Gateway + Lambda <b>wake/sleep</b> an EC2-based K3s node on demand, a static wait page on
+        <b>S3 + CloudFront</b> handles the UX, a sample app runs on <b>NodePort</b>, and
+        <b>Prometheus/Grafana</b> provide metrics — all provisioned with <b>Terraform</b>. Designed and built by <b>Ruslan AWS</b>.
+      </div>
+      <div class="cta">
+        <a class="btn ghost" href="https://rusets.com" target="_blank" rel="noopener">🌐 rusets.com</a>
+        <a class="btn ghost" href="https://github.com/rusets" target="_blank" rel="noopener">📦 GitHub Repo</a>
+      </div>
+    </header>
+
+    <section class="grid">
+      <article class="card span-8">
+        <span class="chip">What this is</span>
+        <h3>Purpose</h3>
+        <p>
+          The project shows how to run a personal or demo workload on EC2 while paying <i>zero</i> for compute when it is idle.
+          A K3s node on EC2 is normally stopped. When a visitor opens,
+          <code>https://app.helmkube.site/</code> a static wait page in S3 calls a
+          wake API, waits for readiness via polling, and then redirects the user to the running app.
+          A sleep Lambda watches an SSM heartbeat and stops EC2 again after inactivity.
+        </p>
+        <ul>
+          <li><b>Infra:</b> Terraform modules/files for VPC, EC2, IAM, ECR, SSM, CloudWatch, API Gateway and Lambda.</li>
+          <li><b>Kubernetes:</b> K3s on EC2 with a Helm-deployed NodePort app on port 30080.<code>hello</code></li>
+          <li><b>Observability:</b> Prometheus + Grafana on NodePorts with credentials stored in SSM.</li>
+          <li><b>Wait UX:</b> S3 static website + CloudFront with a neon wait console.<code>app.helmkube.site</code></li>
+        </ul>
+      </article>
+
+      <article class="card span-4 rgb-ring glow">
+        <span class="chip">Live endpoints</span>
+        <h3>Key URLs</h3>
+        <ul>
+          <li><b>Wait page:</b> <code>https://app.helmkube.site/</code> (CloudFront → S3 static )<code>index.html</code></li>
+          <li><b>Wake API base:</b> <code>https://&lt;api-id&gt;.execute-api.us-east-1.amazonaws.com/</code> (HTTP API).</li>
+          <li><b>App NodePort:</b> <code>http://&lt;ec2-public-dns&gt;:30080/</code> (redirect target after wake)</li>
+          <li><b>Grafana:</b> NodePort 30090 (IP-restricted).</li>
+          <li><b>Prometheus:</b> NodePort 30991 (IP-restricted).</li>
+        </ul>
+        <p><small>NodePort values and idle timeout are configurable via <code>variables.tf</code>.</small></p>
+      </article>
+
+      <article class="card span-6">
+        <span class="chip">Flow</span>
+        <h3>Wake page → API → EC2 → K3s</h3>
+        <ul>
+          <li><b>Client:</b> Browser loads the wait page from S3/CloudFront and presses “Wake up”.</li>
+          <li><b>Wait page JS:</b> Calls <code>WAKE_URL=/</code> on the HTTP API, then polls every second.<code>/status</code></li>
+          <li><b>Wake Lambda:</b> Starts EC2, sends a heartbeat to SSM, waits for K3s, refreshes the ECR pull secret and updates kubeconfig in SSM.</li>
+          <li><b>/status:</b> Describes the instance, probes NodePort over public IP/DNS and reports when the app answers.<code>ready=true</code></li>
+          <li><b>Redirect:</b> Once ready, the wait page redirects to the NodePort app URL.</li>
+        </ul>
+      </article>
+
+      <article class="card span-6">
+        <span class="chip">Sleep logic</span>
+        <h3>Autosleep Lambda</h3>
+        <ul>
+          <li>Runs on a schedule (for example, every minute) via EventBridge.</li>
+          <li>Reads the last heartbeat timestamp from SSM Parameter Store.</li>
+          <li>If the EC2 instance is <code>running</code> but idle for more than <code>idle_minutes</code>,
+              calls <code>StopInstances</code> on the node.</li>
+          <li>Respects a short “launch grace period” and an override tag
+              (for example to avoid stopping during debugging.) <code>Autostop=off</code></li>
+        </ul>
+      </article>
+
+      <article class="card span-6">
+        <span class="chip">Infrastructure highlights</span>
+        <h3>Terraform &amp; security</h3>
+        <ul>
+          <li>Lambdas are packaged from local source using <code>archive_file</code> data sources, so no manual ZIPs are checked in.</li>
+          <li>Lambda role grants only EC2, SSM ParameterStore and SSM RunCommand permissions required for wake/sleep and on-node deploy.</li>
+          <li>EC2 security groups expose only the NodePort app publicly; dashboards are limited to admin IP ranges.</li>
+          <li>Grafana password and kubeconfig are stored as SSM SecureString parameters, never committed to the repo.</li>
+        </ul>
+      </article>
+
+      <article class="card span-6">
+        <span class="chip">Operations</span>
+        <h3>Everyday commands</h3>
+        <pre><code># Open the project wait page (CloudFront → S3 → HTTP API)
+https://app.helmkube.site/
+
+# After wake completes, check the app directly on NodePort
+curl -I http://&lt;ec2-public-dns&gt;:30080/
+
+# Inspect K3s resources from local machine
+kubectl --kubeconfig build/k3s-embed.yaml get nodes -o wide
+kubectl --kubeconfig build/k3s-embed.yaml get svc,deploy -n default
+
+# Manually trigger sleep (if /sleep route is enabled)
+curl -I https://&lt;api-id&gt;.execute-api.us-east-1.amazonaws.com/sleep</code></pre>
+      </article>
+
+      <article class="card span-6">
+        <span class="chip">Repo structure</span>
+        <h3>Folders</h3>
+        <pre><code>
+helmkube-autowake-cicd
+├── app/
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── server.js
+│   └── public/
+│       ├── index.html
+│       └── ...
+├── build/
+│   ├── k3s*.yaml
+│   └── *.zip
+├── charts/
+│   └── hello/
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
+│           └── ...
+├── docs
+│   └── Screenshots
+├── infra/
+│   ├── ami-and-ec2.tf
+│   ├── apigw.tf
+│   ├── build-push.tf
+│   ├── ecr.tf
+│   ├── helm.tf
+│   ├── iam-*.tf
+│   ├── ssm-*.tf
+│   ├── network.tf
+│   ├── monitoring.tf
+│   ├── variables.tf
+│   ├── terraform.tfvars
+│   └── ...
+├── lambda/
+│   ├── wake_instance.py
+│   └── sleep_instance.py
+├── templates/
+│   └── user_data.sh.tmpl
+└── wait-site/
+    ├── index.html
+    └── cf-wait.json
+</code></pre>
+      </article>
+
+      <article class="card span-6">
+        <span class="chip">Costs</span>
+<h3>Cost profile</h3>
+<ul>
+  <li><b>Idle:</b> EC2 is stopped → $0 for compute. Remaining charges come from API Gateway, 
+      Lambda, SSM, CloudWatch, S3/DynamoDB for Terraform backend, and Route 53 if a hosted 
+      zone is used.</li>
+
+  <li><b>Active:</b> EC2 VM runtime during use (default size adjustable in variables)<code>m7i-flex.large</code></li>
+
+  <li><b>S3 + CloudFront:</b> Wait page traffic is tiny; this stays in the 
+      “cents-per-month” range.</li>
+
+  <li><b>Elastic IP (EIP):</b> A fixed EIP ensures the app’s public address never changes 
+      between wake/sleep cycles. Without it, each EC2 wake would generate a new public IP, 
+      breaking redirects, bookmarks, and demo URLs.</li>
+
+  <li><b>EIP cost:</b> $0 as long as the EIP is attached during instance runtime. 
+      AWS only charges for unattached EIPs — this project attaches it on every wake, 
+      so it remains free.</li>
+</ul>
+
+      <article class="card span-6">
+        <span class="chip">Future</span>
+        <h3>Potential improvements</h3>
+        <ul>
+          <li>Replace NodePort with an Ingress + TLS (ALB or Nginx Ingress Controller behind a Load Balancer).</li>
+          <li>Introduce CI build matrix for multi-arch images and SBOM/signing.</li>
+          <li>Add a GitOps variant (ArgoCD) that continuously reconciles Helm charts from the repo.</li>
+          <li>Automate S3 / CloudFront wait-page deploy from the same Terraform stack or a dedicated pipeline.</li>
+        </ul>
+      </article>
+    </section>
+
+    <footer>
+      Built by <b>Ruslan AWS</b> ·
+      <a class="inline" href="https://rusets.com" target="_blank" rel="noopener">rusets.com</a> ·
+      <a class="inline" href="https://github.com/rusets/helmkube-autowake-cicd" target="_blank" rel="noopener">GitHub</a>
+    </footer>
   </div>
 
-  <!-- Neon bubbles (thin RGB bubbles) decorative background elements -->
-  <div class="bubble bubble-tl"></div>
-  <div class="bubble bubble-tr"></div>
-  <div class="bubble bubble-bl"></div>
-  <div class="bubble bubble-br"></div>
-
-  <!-- Main content container -->
-  <main class="container">
-    <!-- Main hero section -->
-    <h1 class="title">Ruslan Dashkin</h1>
-    <p class="subtitle">DevOps &amp; Cloud Engineer</p>
-    <p class="lead">
-      Building robust and scalable cloud infrastructures using AWS, Terraform, and more.
-    </p>
-
-    <!-- Call to action buttons -->
-    <div class="cta">
-      <a class="btn btn-primary" href="mailto:rdservicepros9@gmail.com">Contact Me</a>
-      <a class="btn btn-outline" href="./Ruslan_Dashkin_CV.pdf" download>Download CV</a>
-    </div>
-
-    <!-- Small logo strip showing key technologies -->
-    <div class="logo-strip" aria-label="Technologies">
-      <img src="./img/aws-smile.png" alt="AWS" />
-      <img src="./img/terraform.png" alt="Terraform" />
-      <a href="https://github.com/rusets" target="_blank" rel="noreferrer noopener">
-        <img src="./img/github.png" alt="GitHub" />
-      </a>
-    </div>
-
-    <!-- Feature cards highlighting core skills -->
-    <section class="features" aria-label="Core Skills">
-      <article class="card glow">
-        <div class="mini-logo">
-          <img src="./img/aws-smile.png" alt="AWS" />
-        </div>
-        <h3>AWS Solutions</h3>
-        <p>Design, cost, security, scale.</p>
-      </article>
-
-      <article class="card glow">
-        <div class="mini-logo">
-          <img src="./img/terraform.png" alt="Terraform" />
-        </div>
-        <h3>IaC Automation</h3>
-        <p>Terraform-first, GitOps, CI/CD.</p>
-      </article>
-
-      <article class="card glow">
-        <div class="mini-logo">
-          <img src="./img/infrastructure.png" alt="Infrastructure" />
-        </div>
-        <h3>Infrastructure</h3>
-        <p>Networks, containers, observability.</p>
-      </article>
-    </section>
-
-    <!-- AWS Certifications grid -->
-    <section class="certs" aria-label="Certifications">
-      <h4 class="caps">AWS CERTIFICATIONS</h4>
-
-      <div class="badge-grid">
-        <a class="badge-item" href="https://www.credly.com/users/ruslan-dashkin.252701b0" target="_blank"
-          rel="noreferrer noopener">
-          <img class="badge-img" src="./img/aws-ai-practitioner.png" alt="AWS Certified AI Practitioner" />
-        </a>
-        <a class="badge-item" href="https://www.credly.com/users/ruslan-dashkin.252701b0" target="_blank"
-          rel="noreferrer noopener">
-          <img class="badge-img" src="./img/aws-ai-early-adopter.png" alt="AWS AI Practitioner Early Adopter" />
-        </a>
-        <a class="badge-item" href="https://www.credly.com/users/ruslan-dashkin.252701b0" target="_blank"
-          rel="noreferrer noopener">
-          <img class="badge-img" src="./img/aws-cloud-practitioner.png" alt="AWS Certified Cloud Practitioner" />
-        </a>
-        <a class="badge-item" href="https://www.credly.com/users/ruslan-dashkin.252701b0" target="_blank"
-          rel="noreferrer noopener">
-          <img class="badge-img" src="./img/aws-developer-associate.png" alt="AWS Certified Developer – Associate" />
-        </a>
-        <a class="badge-item" href="https://www.credly.com/users/ruslan-dashkin.252701b0" target="_blank"
-          rel="noreferrer noopener">
-          <img class="badge-img" src="./img/aws-solutions-architect-associate.png"
-            alt="AWS Certified Solutions Architect – Associate" />
-        </a>
-        <a class="badge-item" href="https://www.lpi.org/our-certifications/linux-essentials-overview" target="_blank"
-          rel="noreferrer noopener">
-          <img class="badge-img" src="./img/linux-essentials.png" alt="Linux Essentials (LPI)" />
-        </a>
-      </div>
-    </section>
-
-    <!-- Footer with links and copyright -->
-    <footer class="footer">
-      <div class="links">
-        <a href="https://github.com/rusets" target="_blank" rel="noreferrer noopener">GitHub</a>
-        <a href="https://www.rdservicepros.com" target="_blank" rel="noreferrer noopener">Website</a>
-        <a href="mailto:rdservicepros9@gmail.com">Email</a>
-      </div>
-      <div>© <span id="year"></span> Ruslan Dashkin — DevOps &amp; Cloud Engineer</div>
-    </footer>
-  </main>
-
   <script>
-    // Set current year in footer copyright
-    document.getElementById("year").textContent = new Date().getFullYear();
+    document.querySelectorAll('.btn').forEach(b => {
+      b.addEventListener('pointerenter', () => b.classList.add('pulse-on'));
+      b.addEventListener('pointerleave', () => b.classList.remove('pulse-on'));
+    });
   </script>
 </body>
-
 </html>

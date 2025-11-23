@@ -1,7 +1,6 @@
 ############################################
-# EventBridge Scheduler → Lambda
-# Auto-sleep every 1 minute: stops EC2 if heartbeat is older than var.idle_minutes
-# (logic lives in sleep_instance.py)
+# EventBridge Scheduler → periodic EC2 reaper
+# Purpose: invoke sleep Lambda each minute to enforce idle shutdown
 ############################################
 
 # Trust policy for EventBridge Scheduler
@@ -34,7 +33,7 @@ resource "aws_iam_role_policy" "scheduler_invoke_lambda_attach" {
   policy = data.aws_iam_policy_document.scheduler_invoke_lambda.json
 }
 
-# Schedule: invoke sleep_instance once per minute (kept disabled by default)
+# Scheduler rule: call sleep_instance once per minute (initially disabled)
 resource "aws_scheduler_schedule" "sleep_every_min" {
   name                = "${var.project_name}-sleep-every-minute"
   description         = "Call sleep_instance every minute to stop EC2 after ${var.idle_minutes} minutes idle"
@@ -47,10 +46,8 @@ resource "aws_scheduler_schedule" "sleep_every_min" {
   target {
     arn      = aws_lambda_function.sleep_instance.arn
     role_arn = aws_iam_role.scheduler_role.arn
-    # Optional payload to the handler
-    input = jsonencode({})
+    input    = jsonencode({})
   }
 
-  # Keep resource created but paused; switch to ENABLED when ready
   state = "ENABLED"
 }

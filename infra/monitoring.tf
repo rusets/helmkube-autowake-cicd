@@ -1,11 +1,6 @@
 ############################################
-# Monitoring stack — Prometheus + Grafana
-# - Secure Grafana admin password in SSM (SecureString)
-# - Namespace "monitoring"
-# - kube-prometheus-stack via Helm with NodePorts
+# Grafana Admin Password — random + SSM
 ############################################
-
-# Random strong Grafana admin password
 resource "random_password" "grafana_admin" {
   length           = 24
   special          = true
@@ -16,7 +11,6 @@ resource "random_password" "grafana_admin" {
   min_special      = 1
 }
 
-# Store password securely in SSM (kept out of code/state)
 resource "aws_ssm_parameter" "grafana_admin" {
   name        = "/helmkube/grafana/admin_password"
   description = "Grafana admin password (managed by Terraform)"
@@ -29,14 +23,18 @@ resource "aws_ssm_parameter" "grafana_admin" {
   }
 }
 
-# Read back the password (decrypted) to inject into a K8s Secret
 data "aws_ssm_parameter" "grafana_admin" {
   name            = aws_ssm_parameter.grafana_admin.name
   with_decryption = true
-  depends_on      = [aws_ssm_parameter.grafana_admin]
+
+  depends_on = [
+    aws_ssm_parameter.grafana_admin
+  ]
 }
 
-# Create "monitoring" namespace (after kubeconfig is available)
+############################################
+# Namespace — monitoring
+############################################
 resource "kubernetes_namespace" "monitoring" {
   metadata {
     name = "monitoring"
@@ -46,10 +44,14 @@ resource "kubernetes_namespace" "monitoring" {
     }
   }
 
-  depends_on = [null_resource.fetch_kubeconfig]
+  depends_on = [
+    null_resource.fetch_kubeconfig
+  ]
 }
 
-# K8s Secret with Grafana admin credentials (referenced by Helm values)
+############################################
+# Kubernetes Secret — Grafana admin creds
+############################################
 resource "kubernetes_secret" "grafana_admin" {
   metadata {
     name      = "grafana-admin"
@@ -70,9 +72,10 @@ resource "kubernetes_secret" "grafana_admin" {
   ]
 }
 
-# kube-prometheus-stack (Prometheus + Grafana + Alertmanager)
+############################################
+# Helm Release — kube-prometheus-stack
+############################################
 resource "helm_release" "prometheus" {
-  depends_on       = [null_resource.fetch_kubeconfig, kubernetes_secret.grafana_admin, kubernetes_namespace.monitoring]
   name             = "prometheus"
   namespace        = kubernetes_namespace.monitoring.metadata[0].name
   create_namespace = false
@@ -82,7 +85,6 @@ resource "helm_release" "prometheus" {
   version    = "65.2.0"
 
   wait             = true
-  timeout          = 1200
   atomic           = true
   wait_for_jobs    = true
   recreate_pods    = true
@@ -93,28 +95,58 @@ resource "helm_release" "prometheus" {
   reset_values     = true
   reuse_values     = false
   max_history      = 3
+  timeout          = 1200
+
+  depends_on = [
+    null_resource.fetch_kubeconfig,
+    kubernetes_secret.grafana_admin,
+    kubernetes_namespace.monitoring
+  ]
 
   values = [
     yamlencode({
+
+      ########################################
+      # Prometheus Operator — no TLS / no webhook
+      ########################################
       prometheusOperator = {
         admissionWebhooks = { enabled = false }
         tls               = { enabled = false }
       }
 
+      ########################################
+      # Control Plane Scraping — disabled (k3s)
+      ########################################
+      kubeApiServer         = { enabled = false }
+      kubeControllerManager = { enabled = false, service = { enabled = false }, serviceMonitor = { enabled = false } }
+      kubeScheduler         = { enabled = false, service = { enabled = false }, serviceMonitor = { enabled = false } }
+      kubeEtcd              = { enabled = false, service = { enabled = false }, serviceMonitor = { enabled = false } }
+      kubeProxy             = { enabled = false, service = { enabled = false }, serviceMonitor = { enabled = false } }
+
+      ########################################
+      # Alertmanager — NodePort + minimal config
+      ########################################
       alertmanager = {
         enabled = true
         service = {
           type     = "NodePort"
           nodePort = 30992
         }
-        alertmanagerSpec = { replicas = 1 }
+        alertmanagerSpec = {
+          replicas = 1
+        }
         config = {
-          global    = {}
-          route     = { receiver = "null" }
-          receivers = [{ name = "null" }]
+          global = {}
+          route  = { receiver = "null" }
+          receivers = [
+            { name = "null" }
+          ]
         }
       }
 
+      ########################################
+      # Grafana — SSM admin + PVC persistence
+      ########################################
       grafana = {
         admin = {
           existingSecret = "grafana-admin"
@@ -127,7 +159,18 @@ resource "helm_release" "prometheus" {
           nodePort = var.grafana_node_port
         }
 
-        serviceMonitor = { selfMonitor = true }
+        persistence = {
+          enabled          = true
+          type             = "pvc"
+          storageClassName = "local-path"
+          accessModes      = ["ReadWriteOnce"]
+          size             = "5Gi"
+          finalizers       = ["kubernetes.io/pvc-protection"]
+        }
+
+        serviceMonitor = {
+          selfMonitor = true
+        }
 
         env = {
           GF_AUTH_ANONYMOUS_ENABLED = "false"
@@ -136,7 +179,10 @@ resource "helm_release" "prometheus" {
 
         "grafana.ini" = {
           date_formats = { default_timezone = "browser" }
-          panels       = { disable_sanitize_html = true }
+          panels = {
+            disable_sanitize_html = true
+            hideNoData            = true
+          }
         }
 
         livenessProbe = {
@@ -164,7 +210,11 @@ resource "helm_release" "prometheus" {
         }
 
         extraInitContainers = [
-          { name = "sleep-before-sidecars", image = "busybox:1.36", command = ["sh", "-c", "echo 'Waiting 30s for Grafana...'; sleep 30"] }
+          {
+            name    = "sleep-before-sidecars"
+            image   = "busybox:1.36"
+            command = ["sh", "-c", "echo 'Waiting 30s for Grafana...'; sleep 30"]
+          }
         ]
 
         sidecar = {
@@ -178,10 +228,8 @@ resource "helm_release" "prometheus" {
           }
         }
 
-        downloadDashboards = { enabled = false }
-
         podAnnotations = {
-          secret-hash = "${sha256(data.aws_ssm_parameter.grafana_admin.value)}"
+          secret-hash = sha256(data.aws_ssm_parameter.grafana_admin.value)
         }
 
         datasources = {
@@ -202,13 +250,34 @@ resource "helm_release" "prometheus" {
         defaultDashboardsEnabled = true
       }
 
+      ########################################
+      # Prometheus — NodePort + selectors
+      ########################################
       prometheus = {
         service = {
           type     = "NodePort"
           nodePort = var.prometheus_node_port
         }
+
+        prometheusSpec = {
+          scrapeInterval     = "30s"
+          evaluationInterval = "30s"
+
+          serviceMonitorSelector = {}
+          serviceMonitorNamespaceSelector = {
+            matchNames = ["monitoring"]
+          }
+
+          podMonitorSelector = {}
+          podMonitorNamespaceSelector = {
+            matchNames = ["monitoring"]
+          }
+        }
       }
 
+      ########################################
+      # Kubelet Metrics — cAdvisor + probes
+      ########################################
       kubelet = {
         serviceMonitor = {
           enabled  = true
@@ -217,7 +286,22 @@ resource "helm_release" "prometheus" {
         }
       }
 
-      defaultRules = { create = true }
+      ########################################
+      # Default Rules — disable CP alerts (k3s)
+      ########################################
+      defaultRules = {
+        create = true
+        rules = {
+          kubeApiserver             = false
+          kubeApiserverAvailability = false
+          kubeApiserverError        = false
+          kubeApiserverSlos         = false
+          kubeScheduler             = false
+          kubeControllerManager     = false
+          etcd                      = false
+        }
+      }
+
     })
   ]
 }

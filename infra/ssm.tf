@@ -1,7 +1,5 @@
 ############################################
-# SSM Parameter — Heartbeat (drift-tolerant)
-# Purpose: marker updated by Lambdas at runtime
-# Notes: ignore value drift so Terraform doesn’t fight the app
+# SSM Parameter — heartbeat marker updated by Lambdas (drift-tolerant)
 ############################################
 resource "aws_ssm_parameter" "heartbeat" {
   name        = "/neon-portfolio/last_heartbeat"

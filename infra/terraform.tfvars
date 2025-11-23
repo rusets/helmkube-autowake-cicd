@@ -3,7 +3,7 @@ region       = "us-east-1"
 project_name = "helmkube-autowake"
 
 # -------------------- Application image --------------------
-image_tag = "v1.2.1"
+image_tag = "v1.2.2"
 
 # ⚠ Admin IP (keep local; do not commit real value)
 admin_ip = "97.138.249.119/32"
