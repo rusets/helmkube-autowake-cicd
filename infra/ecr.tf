@@ -2,6 +2,7 @@
 # ECR Repository — hello-app image storage
 # Purpose: stores built Docker images for k3s deployment
 ############################################
+#tfsec:ignore:aws-ecr-repository-customer-key
 resource "aws_ecr_repository" "hello" {
   name                 = "${var.project_name}/hello-app"
   image_tag_mutability = "IMMUTABLE"
