@@ -23,6 +23,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare dummy kubeconfig for CI
+        run: |
+          mkdir -p ../build
+          cat > ../build/k3s-embed.yaml << 'EOF'
+          apiVersion: v1
+          clusters:
+          - cluster:
+              server: https://example.invalid
+              certificate-authority-data: ""
+            name: dummy
+          contexts:
+          - context:
+              cluster: dummy
+              user: dummy
+            name: dummy
+          current-context: dummy
+          kind: Config
+          users:
+          - name: dummy
+            user:
+              token: dummy
+          EOF
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
