@@ -3,18 +3,37 @@
 ############################################
 
 terraform {
+  required_version = ">= 1.8.0"
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = ">= 5.0"
     }
+
     kubernetes = {
       source  = "hashicorp/kubernetes"
       version = ">= 2.29.0"
     }
+
     helm = {
       source  = "hashicorp/helm"
       version = ">= 2.13.1"
+    }
+
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.0"
+    }
+
+    null = {
+      source  = "hashicorp/null"
+      version = ">= 3.0"
+    }
+
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.0"
     }
   }
 }
@@ -30,11 +49,6 @@ variable "region" {
   type    = string
   default = "us-east-1"
 }
-
-############################################
-# Caller identity (handy for debugging/account checks)
-############################################
-data "aws_caller_identity" "current" {}
 
 ############################################
 # Kubeconfig path (embedded kubeconfig on disk)
