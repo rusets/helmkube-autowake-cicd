@@ -26,3 +26,8 @@ node_modules/
 # IDE
 .vscode/
 .idea/
+
+# Local Terraform vars
+*.tfvars
+*.tfvars.json
+.terraform.lock.hcl
