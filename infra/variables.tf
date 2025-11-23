@@ -155,11 +155,6 @@ variable "expose_sleep_route" {
   default     = false
 }
 
-variable "instance_name_tag" {
-  type        = string
-  description = "Value of EC2 Name tag used to autodetect instance (data.aws_instances.by_name_tag)."
-  default     = "helmkube-autowake-ec2"
-}
 
 ############################################
 # Admin IP (sensitive in tfvars)
