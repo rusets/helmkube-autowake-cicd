@@ -36,29 +36,13 @@ variable "image_tag" {
 
 ############################################
 # EC2 / Network
-# Instance type, API access CIDRs, and SSH key
+# Instance type and NodePorts
 ############################################
 
 variable "instance_type" {
   type        = string
   description = "EC2 instance type for the k3s node (e.g., m7i-flex.large)."
   default     = "m7i-flex.large"
-}
-
-variable "admin_cidr" {
-  type        = list(string)
-  description = "CIDR list allowed to reach the k3s API (6443)."
-  default     = ["0.0.0.0/0"]
-  validation {
-    condition     = length(var.admin_cidr) > 0 && alltrue([for c in var.admin_cidr : can(cidrnetmask(c))])
-    error_message = "admin_cidr must be a non-empty list of valid CIDR blocks."
-  }
-}
-
-variable "key_name" {
-  type        = string
-  description = "Optional EC2 key pair name; null disables SSH key access."
-  default     = null
 }
 
 ############################################
@@ -97,20 +81,8 @@ variable "prometheus_node_port" {
 }
 
 ############################################
-# GitHub & CI/CD
-# PAT is optional; keep empty for public repos
-############################################
-
-variable "github_token" {
-  type        = string
-  description = "Optional GitHub PAT for private repos; empty if public."
-  default     = ""
-  sensitive   = true
-}
-
-############################################
 # Wake/Sleep & Monitoring
-# App URLs, heartbeat, timeouts, and polling windows
+# App URLs, heartbeat, idle window
 ############################################
 
 variable "target_url" {
@@ -149,36 +121,6 @@ variable "heartbeat_param" {
   default     = "/neon-portfolio/last_heartbeat"
 }
 
-variable "local_tz" {
-  type        = string
-  description = "Timezone for ETA text on the waiting page."
-  default     = "America/Chicago"
-}
-
-variable "healthcheck_timeout_sec" {
-  type        = number
-  description = "HTTP healthcheck timeout per probe."
-  default     = 3.5
-}
-
-variable "dns_wait_total_sec" {
-  type        = number
-  description = "How long to wait for PublicDnsName to appear after start."
-  default     = 60
-}
-
-variable "ready_poll_total_sec" {
-  type        = number
-  description = "Total budget to poll app readiness before showing waiting page."
-  default     = 240
-}
-
-variable "ready_poll_interval_sec" {
-  type        = number
-  description = "Interval between readiness probes."
-  default     = 3.0
-}
-
 ############################################
 # API & Domain
 # Optional custom domain for API Gateway
@@ -191,19 +133,8 @@ variable "api_custom_domain" {
 }
 
 ############################################
-# SSM (manual reference only)
-# Key under which kubeconfig is stored
-############################################
-
-variable "kubeconfig_param_name" {
-  type        = string
-  description = "SSM Parameter Store key where kubeconfig is stored (manual upload)."
-  default     = "/helmkube/k3s/kubeconfig"
-}
-
-############################################
 # Optional / Safety
-# Deployment mode, ID overrides, protections, routes
+# Deployment mode, ID overrides, routes
 ############################################
 
 variable "use_ssm_deploy" {
@@ -216,12 +147,6 @@ variable "instance_id" {
   type        = string
   description = "Optional EC2 instance ID to override autodetect."
   default     = null
-}
-
-variable "protect" {
-  description = "Protect critical resources from destroy."
-  type        = bool
-  default     = true
 }
 
 variable "expose_sleep_route" {
@@ -272,25 +197,4 @@ variable "expose_alertmanager" {
   type        = bool
   description = "Expose Alertmanager NodePort (restricted to admin_ip). Keep false unless you really need the UI."
   default     = false
-}
-
-variable "helm_wait" {
-  type        = bool
-  description = "Whether Helm should wait for resources to become ready."
-  default     = true
-}
-
-############################################
-# Alertmanager NodePort
-# Fixed NodePort to keep dashboards consistent
-############################################
-
-variable "alertmanager_node_port" {
-  type        = number
-  description = "NodePort for Alertmanager (30000–32767)."
-  default     = 30992
-  validation {
-    condition     = var.alertmanager_node_port >= 30000 && var.alertmanager_node_port <= 32767
-    error_message = "alertmanager_node_port must be in 30000–32767."
-  }
 }
