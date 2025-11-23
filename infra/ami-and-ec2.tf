@@ -1,4 +1,11 @@
 ############################################
+# Latest Amazon Linux 2023 AMI (kernel 6.1, x86_64) via SSM public parameter
+############################################
+data "aws_ssm_parameter" "al2023_latest" {
+  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
+}
+
+############################################
 # Elastic IP lookup
 # Purpose: reuse the already allocated EIP for the k3s node
 ############################################
