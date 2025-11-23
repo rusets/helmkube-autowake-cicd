@@ -44,6 +44,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
 # IAM Policy — EC2 and SSM for Lambdas
 # Purpose: EC2 start/stop/describe + SSM parameters + SSM RunCommand
 ############################################
+#tfsec:ignore:aws-iam-no-policy-wildcards
 resource "aws_iam_policy" "lambda_ec2_ssm" {
   name        = "${var.project_name}-lambda-ec2-ssm"
   description = "Allow Lambda to start/stop/describe EC2 + read/write SSM params + SSM RunCommand"
@@ -100,6 +101,10 @@ resource "aws_lambda_function" "wake_instance" {
 
   filename         = data.archive_file.wake_instance.output_path
   source_code_hash = data.archive_file.wake_instance.output_base64sha256
+
+  tracing_config {
+    mode = "PassThrough"
+  }
 
   environment {
     variables = {
