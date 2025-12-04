@@ -1,13 +1,25 @@
 <p align="center">
-
-  <img src="https://img.shields.io/badge/IaC-Terraform-blueviolet" />
-  <img src="https://img.shields.io/badge/Cloud-AWS-orange" />
-  <img src="https://img.shields.io/badge/Kubernetes-k3s-326CE5" />
-  <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-lightgrey" />
-  <img src="https://img.shields.io/badge/Monitoring-Prometheus%20%2F%20Grafana-green" />
-  <br />
+  <img src="https://img.shields.io/badge/Terraform-IaC-5C4EE5?logo=terraform" />
+  <img src="https://img.shields.io/badge/AWS-Cloud-F29100?logo=amazon-aws" />
+  <img src="https://img.shields.io/badge/Kubernetes-k3s-326CE5?logo=kubernetes" />
+  <img src="https://img.shields.io/badge/Helm-Charts-0F1689?logo=helm" />
+  <img src="https://img.shields.io/badge/GitHub_Actions-CI%2FCD-2088FF?logo=github-actions" />
+  <img src="https://img.shields.io/badge/Lambda-Wake%20%2F%20Sleep-FF9900?logo=awslambda" />
+  <img src="https://img.shields.io/badge/API_Gateway-HTTP_API-orange?logo=amazon-api-gateway" />
+  <img src="https://img.shields.io/badge/EventBridge-Scheduler-C135F5?logo=amazoneventbridge" />
+  <img src="https://img.shields.io/badge/SSM-Parameter%20Store-527FFF?logo=awsssm" />
+  <img src="https://img.shields.io/badge/Monitoring-Prometheus%20%2F%20Grafana-7F2FDB?logo=grafana" />
+</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/terraform-fmt%20✔-623CE4?logo=terraform" />
+  <img src="https://img.shields.io/badge/terraform-validate%20✔-623CE4?logo=terraform" />
+  <img src="https://img.shields.io/badge/tflint-clean%20✔-2D76FF?logo=terraform" />
+  <img src="https://img.shields.io/badge/tfsec-clean%20✔-FF4B4B?logo=trivy" />
+  <img src="https://img.shields.io/badge/checkov-clean%20✔-00A75A?logo=checkov" />
   <img src="https://github.com/rusets/helmkube-autowake-cicd/actions/workflows/terraform-ci.yml/badge.svg" alt="terraform-ci" />
-  
+  <img src="https://github.com/rusets/helmkube-autowake-cicd/actions/workflows/deploy.yml/badge.svg" alt="deploy" />
+  <img src="https://github.com/rusets/helmkube-autowake-cicd/actions/workflows/destroy.yml/badge.svg" alt="destroy" />
+
 </p>
 
 # Helmkube Autowake — CI/CD Kubernetes Demo
@@ -118,55 +130,58 @@ flowchart TD
 
 ---
 
-## Repository structure (top‑level)
+## **Project Structure**
 
 ```
-├── app/                     
-│   ├── Dockerfile
-│   ├── server.js
-│   └── public/
-│
-├── charts/
-│   └── hello/               
-│       ├── Chart.yaml
-│       ├── values.yaml
-│       └── templates/
-├── docs
-│   └── screenshots
-├── infra/                   
-│   ├── ami-and-ec2.tf
-│   ├── apigw.tf
-│   ├── build-push.tf
-│   ├── datasources.tf
-│   ├── ecr.tf
-│   ├── helm.tf
-│   ├── iam-ec2.tf
-│   ├── iam-scheduler.tf
-│   ├── monitoring.tf
-│   ├── network.tf
-│   ├── outputs.tf
-│   ├── providers.tf
-│   ├── s3-logs.tf
-│   ├── ssm.tf
-│   ├── ssm-deploy.tf
-│   ├── ssm-logs.tf
-│   ├── variables.tf
-│   │
-│   ├── lambda/              
-│   │   ├── wake_instance.py
-│   │   └── sleep_instance.py
-│   │
-│   ├── templates/
-│   │   └── user_data.sh.tmpl
-│   │
-│   └── build/               
-│       ├── k3s.yaml
-│       ├── k3s-embed.yaml
-│       ├── wake_instance.zip
-│       └── sleep_instance.zip
-│
+helmkube-autowake-cicd
+├── app/                     # Demo Node.js app (hello service)
+├── charts/                  # Helm chart for k3s deployment
+├── docs/                    # Architecture, SLO, cost, ADRs, runbooks
+├── infra/                   # Terraform IaC (EC2, k3s, Lambda, API, ECR, SSM)
+├── lambda/                  # Lambda sources (wake/sleep)
+├── templates/               # EC2 user_data.sh template
+├── wait-site/               # Static wake page (CloudFront+S3)
+├── build/                   # Generated artifacts (kubeconfig, ZIPs)
+├── .github/                 # Workflows + issue/PR templates
+├── .tflint.hcl              # Lint rules
+├── LICENSE                  # MIT license for the project
 └── README.md
 ```
+**Full detailed structure:** see [`docs/architecture.md`](./docs/architecture.md)
+
+---
+
+##  Documentation
+
+This repository includes full, production-grade project documentation covering architecture, operations, security, and decision-making.
+
+### **System Architecture**
+- [Architecture Overview](./docs/architecture.md)
+- [Architecture Diagrams (Mermaid)](./docs/diagrams/architecture.md)
+- [Sequence Flow (wake → healthcheck → sleep)](./docs/diagrams/sequence.md)
+
+### **Design Decisions (ADR)**
+- [ADR-001 — Why k3s Single Node](./docs/adr/adr-001-why-k3s-single-node.md)
+- [ADR-002 — Why Terraform for IaC](./docs/adr/adr-002-why-terraform-for-iac.md)
+- [ADR-003 — Wake/Sleep Lifecycle Design](./docs/adr/adr-003-wake-sleep-lifecycle-design.md)
+- [ADR-004 — Security Boundaries & SSM](./docs/adr/adr-004-security-boundaries-and-ssm.md)
+
+### **Operations & Reliability**
+- [Runbook — Wake Failure](./docs/runbooks/wake-failure.md)
+- [Runbook — Destroy Not Triggered](./docs/runbooks/destroy-not-triggered.md)
+- [Runbook — Rollback Procedure](./docs/runbooks/rollback.md)
+
+### **Monitoring & Observability**
+- [Monitoring Overview (Prometheus, Alertmanager, Grafana)](./docs/monitoring.md)
+- [SLOs — Wake Time & Readiness](./docs/slo.md)
+- [Screenshots & Evidence](./docs/screenshots/)
+
+### **Security**
+- [Threat Model & Security Boundaries](./docs/threat-model.md)
+
+### **Cost Optimization**
+- [Cost Model & Savings](./docs/cost.md)
+
 ---
 
 ##  Why This Project Matters
@@ -419,8 +434,9 @@ Therefore the app is accessed over plain HTTP, which is expected for single-node
 
 ---
 
-#  License
+## License
 
-- Released under the **MIT License** — free to use, modify, and learn from.
-- © Ruslan Dashkin (“🚀 Ruslan AWS”).
-- The “🚀 Ruslan AWS” branding and all related visuals are protected; commercial reuse or rebranding is prohibited without permission.
+Released under the MIT License.  
+See the LICENSE file for full details.
+
+Branding name “🚀 Ruslan AWS” and related visuals may not be reused or rebranded without permission.
