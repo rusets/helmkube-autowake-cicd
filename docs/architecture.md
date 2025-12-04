@@ -21,7 +21,7 @@ helmkube-autowake-cicd
 │       ├── script.js
 │       └── styles.css
 │
-├── build/                           # Generated artifacts (not hand-edited)
+├── build/                           # Generated artifacts (kubeconfig, Lambda ZIPs) — ignored by Git
 │   ├── k3s-embed.yaml               # Kubeconfig for local kubectl access
 │   ├── k3s.yaml                     # Raw kubeconfig from cluster
 │   ├── sleep_instance.zip           # Packaged Lambda (sleep_instance)

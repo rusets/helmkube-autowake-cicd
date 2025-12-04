@@ -151,53 +151,31 @@ resource "null_resource" "apply_ecr_secret" {
 # Purpose: render values.yaml with fixed NodePort and wait for rollout
 ############################################
 resource "null_resource" "helm_deploy_hello" {
-  count      = var.use_ssm_deploy ? 0 : 1
-  depends_on = [null_resource.apply_ecr_secret]
-
-  triggers = {
-    image_repo = aws_ecr_repository.hello.repository_url
-    image_tag  = var.image_tag
-    node_port  = var.node_port
-  }
-
   provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-c"]
-    command     = <<-EOC
+    command = <<-EOT
       set -euo pipefail
-      K="${var.kubeconfig_path}"
-      CHART_PATH="${path.module}/../charts/hello"
+      K="../build/k3s-embed.yaml"
+      CHART_PATH="./../charts/hello"
 
       TMPDIR="$(mktemp -d)"; trap 'rm -rf "$TMPDIR"' EXIT
       cat > "$TMPDIR/values.yaml" <<YAML
 image:
-  repository: ${aws_ecr_repository.hello.repository_url}
-  tag: ${var.image_tag}
-  pullPolicy: Always
+  repository: 097635932419.dkr.ecr.us-east-1.amazonaws.com/helmkube-autowake/hello-app
+  tag: v1.2.2
+  pullPolicy: IfNotPresent
 imagePullSecrets:
   - name: ecr-dockercfg
 service:
   type: NodePort
   port: 80
   targetPort: 3000
-  nodePort: ${var.node_port}
-livenessProbe:
-  httpGet: { path: "/", port: 3000 }
-  initialDelaySeconds: 15
-  periodSeconds: 10
-  timeoutSeconds: 2
-  failureThreshold: 3
-readinessProbe:
-  httpGet: { path: "/", port: 3000 }
-  initialDelaySeconds: 5
-  periodSeconds: 5
-  timeoutSeconds: 2
-  failureThreshold: 3
+  nodePort: 30080
 YAML
 
       helm --kubeconfig "$K" upgrade --install hello "$CHART_PATH" \
         -n default -f "$TMPDIR/values.yaml" --wait --timeout 10m
 
       kubectl --kubeconfig "$K" -n default get svc,deploy,pods -o wide
-    EOC
+    EOT
   }
 }

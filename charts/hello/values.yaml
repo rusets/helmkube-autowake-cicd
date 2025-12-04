@@ -1,10 +1,7 @@
-############################################
-# Helm values — configurable parameters for image, service, and probes
-############################################
 image:
-  repository: ""
-  tag: "latest"
-  pullPolicy: Always
+  repository: "097635932419.dkr.ecr.us-east-1.amazonaws.com/helmkube-autowake/hello-app"
+  tag: "v1.2.2"
+  pullPolicy: IfNotPresent
 
 service:
   type: NodePort

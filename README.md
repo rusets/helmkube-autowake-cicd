@@ -141,7 +141,6 @@ helmkube-autowake-cicd
 ├── lambda/                  # Lambda sources (wake/sleep)
 ├── templates/               # EC2 user_data.sh template
 ├── wait-site/               # Static wake page (CloudFront+S3)
-├── build/                   # Generated artifacts (kubeconfig, ZIPs)
 ├── .github/                 # Workflows + issue/PR templates
 ├── .tflint.hcl              # Lint rules
 ├── LICENSE                  # MIT license for the project
@@ -366,7 +365,7 @@ Usually 1–3 minutes depending on cold/warm state of the EC2 instance.
 
 **Where is the kubeconfig stored?**  
 It is generated into:  
-`infra/build/k3s-embed.yaml`
+`build/k3s-embed.yaml`
 
 **Can I deploy my own Docker image?**  
 Yes — push your image to ECR and update Helm values in the hello chart.
