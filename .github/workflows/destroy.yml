@@ -44,7 +44,7 @@ jobs:
 
       - name: Terraform init
         working-directory: ${{ env.TF_WORKDIR }}
-        run: terraform init -input=false -backend-config=backend.hcl
+        run: terraform init -input=false
 
       - name: Terraform destroy (auto-approve)
         working-directory: ${{ env.TF_WORKDIR }}
