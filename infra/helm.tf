@@ -161,7 +161,7 @@ resource "null_resource" "helm_deploy_hello" {
       cat > "$TMPDIR/values.yaml" <<YAML
 image:
   repository: 097635932419.dkr.ecr.us-east-1.amazonaws.com/helmkube-autowake/hello-app
-  tag: v1.2.2
+  tag: v1.2.4
   pullPolicy: IfNotPresent
 imagePullSecrets:
   - name: ecr-dockercfg

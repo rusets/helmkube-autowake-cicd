@@ -1,3 +1,4 @@
+
 ############################################
 # Default VPC and Subnets
 # Purpose: fetch default AWS VPC and its subnets for networking context

@@ -351,45 +351,63 @@ curl -I https://&lt;api-id&gt;.execute-api.us-east-1.amazonaws.com/sleep</code><
         <h3>Folders</h3>
         <pre><code>
 helmkube-autowake-cicd
-├── app/
+├── .github/                         # CI/CD workflows (deploy, destroy, terraform checks)
+│   ├── ISSUE_TEMPLATE/              # Bug / feature templates
+│   ├── PULL_REQUEST_TEMPLATE.md     # PR checklist for contributors
+│   └── workflows/                   # GitHub Actions automation
+│
+├── app/                             # Demo Node.js application (hello-service)
 │   ├── Dockerfile
-│   ├── package.json
-│   ├── server.js
-│   └── public/
-│       ├── index.html
-│       └── ...
-├── build/
-│   ├── k3s*.yaml
-│   └── *.zip
-├── charts/
+│   └── server.js
+│
+├── build/                           # Generated artifacts (ignored by Git)
+│   ├── k3s-embed.yaml               # Kubeconfig for kubectl access
+│   ├── k3s.yaml                     # Raw cluster kubeconfig (SSM-provided)
+│   └── *.zip                        # Lambda ZIPs (wake/sleep)
+│
+├── charts/                          # Helm chart for the demo application
 │   └── hello/
-│       ├── Chart.yaml
-│       ├── values.yaml
-│       └── templates/
-│           └── ...
-├── docs
-│   └── Screenshots
-├── infra/
-│   ├── ami-and-ec2.tf
-│   ├── apigw.tf
-│   ├── build-push.tf
-│   ├── ecr.tf
-│   ├── helm.tf
-│   ├── iam-*.tf
-│   ├── ssm-*.tf
-│   ├── network.tf
-│   ├── monitoring.tf
-│   ├── variables.tf
-│   ├── terraform.tfvars
-│   └── ...
-├── lambda/
-│   ├── wake_instance.py
-│   └── sleep_instance.py
+│
+├── docs/                            # Project documentation (full)
+│   ├── adr/                         # Architectural Decision Records
+│   ├── diagrams/                    # Mermaid diagrams (arch + sequence)
+│   ├── runbooks/                    # Operational runbooks
+│   └── screenshots/                 # Real evidence (Grafana, Prometheus, kubectl)
+│
+├── infra/                           # Terraform IaC — full platform automation
+│   ├── ami-and-ec2.tf               # AMI, EC2 instance, instance profile
+│   ├── apigw.tf                     # API Gateway routes (/wake, /status, /heartbeat)
+│   ├── backend.tf                   # Terraform remote state backend
+│   ├── build-push.tf                # ECR build & push pipeline integration
+│   ├── ecr.tf                       # ECR repository definition
+│   ├── helm.tf                      # Helm releases (hello app + monitoring stack)
+│   ├── iam-ec2.tf                   # IAM role/policies for EC2
+│   ├── iam-scheduler.tf             # IAM for wake/sleep scheduler
+│   ├── lambda-packaging.tf          # archive_file ZIP builders for Lambdas
+│   ├── monitoring.tf                # Prometheus, Grafana, Alertmanager
+│   ├── network.tf                   # Security groups, admin IP logic
+│   ├── s3-logs.tf                   # S3 bucket for SSM logs
+│   ├── ssm.tf                       # SSM parameters (kubeconfig, secrets)
+│   ├── ssm-deploy.tf                # SSM association to bootstrap k3s + Helm
+│   ├── ssm-logs.tf                  # CloudWatch log groups for SSM
+│   ├── providers.tf                 # Provider definitions (AWS, helm, kubernetes)
+│   ├── outputs.tf                   # Exported URLs, IDs, connection info
+│   └── variables.tf                 # Input variables for the entire stack
+│
+├── lambda/                          # Lambda functions for wake + auto-sleep
+│   ├── sleep_instance.py
+│   └── wake_instance.py
+│
 ├── templates/
-│   └── user_data.sh.tmpl
-└── wait-site/
-    ├── index.html
-    └── cf-wait.json
+│   └── user_data.sh.tmpl            # EC2 bootstrap script (cloud-init + k3s)
+│
+├── wait-site/                       # Static wait page (S3 + CloudFront)
+│   └── index.html
+│
+├── .gitignore
+├── .tflint.hcl                      # TFLint rules
+├── LICENSE
+└── README.md
 </code></pre>
       </article>
 
