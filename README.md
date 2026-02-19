@@ -11,38 +11,38 @@
 </p>
 
 ## Live Environment
-**Wake Endpoint:** https://app.helmkube.site/  
+Wake Endpoint: https://app.helmkube.site/  
 The EC2 instance starts on demand (typically 1–3 minutes depending on cold or warm state).
 
 ---
 
 ## Overview
 
-I built **Helmkube Autowake** as a production-style Kubernetes platform that balances operational realism with cost efficiency.  
+I built Helmkube Autowake as a production-style Kubernetes platform that balances operational realism with cost efficiency.
 
-It runs a single Amazon Linux 2023 EC2 instance with **k3s**, provisioned through **Terraform**, triggered by a serverless wake workflow, and automatically stopped by a scheduled sleep process to eliminate idle compute spend.
+It runs a single Amazon Linux 2023 EC2 instance with k3s, provisioned through Terraform, triggered by a serverless wake workflow, and automatically stopped by a scheduled sleep process to eliminate idle compute spend.
 
 This platform demonstrates:
 
-- On-demand infrastructure lifecycle using **API Gateway → Lambda → EC2**
-- Declarative application and monitoring deployments via **Helm**
+- On-demand infrastructure lifecycle using API Gateway → Lambda → EC2
+- Declarative application and monitoring deployments via Helm
 - Automated wake/sleep orchestration using AWS-native services
 - Secure Kubernetes access with controlled NodePorts and admin-only exposure
-- Observability stack with **Prometheus and Grafana**
+- Observability stack with Prometheus and Grafana
 - Clean, modular Infrastructure-as-Code structured for professional review
 
-The goal was not just to run Kubernetes, but to design and operate it with production principles: automation, security boundaries, cost awareness, and operational clarity.
+The goal was not simply to run Kubernetes, but to design and operate a cost-aware, automation-driven platform aligned with production engineering principles.
 
 ---
 
 ## Tech Stack
 
-- **AWS:** EC2 (Amazon Linux 2023), Lambda, API Gateway (HTTP), EventBridge Scheduler, S3, IAM, ECR, SSM Parameter Store  
-- **Kubernetes:** k3s (single-node control plane), Helm for application and monitoring deployments  
-- **Observability:** Prometheus, Alertmanager, Grafana, kube-state-metrics, node-exporter  
-- **Infrastructure as Code:** Terraform (modular structure, remote state, IAM least privilege)  
-- **CI/CD:** GitHub Actions (lint → validate → build → push → deploy)  
-- **Security:** Hardened Security Groups, admin-restricted NodePorts, secrets via SSM, no NAT Gateway to minimize attack surface
+- AWS: EC2 (Amazon Linux 2023), Lambda, API Gateway (HTTP), EventBridge Scheduler, S3, IAM, ECR, SSM Parameter Store  
+- Kubernetes: k3s (single-node control plane), Helm for application and monitoring deployments  
+- Observability: Prometheus, Alertmanager, Grafana, kube-state-metrics, node-exporter  
+- Infrastructure as Code: Terraform (modular structure, remote state, IAM least privilege)  
+- CI/CD: GitHub Actions (lint → validate → build → push → deploy)  
+- Security: Hardened Security Groups, admin-restricted NodePorts, secrets via SSM, no NAT Gateway to minimize attack surface
 
 ---
 
@@ -104,7 +104,7 @@ flowchart TD
 ## Components
 
 ### Compute & Kubernetes Layer
-- EC2 (Amazon Linux 2023) running a single-node **k3s** control plane
+- EC2 (Amazon Linux 2023) running a single-node k3s control plane
 - Helm-managed workloads (application and optional monitoring stack)
 - Monitoring stack: Prometheus, Grafana, Alertmanager
 
@@ -121,7 +121,7 @@ flowchart TD
 
 ---
 
-## **Project Structure**
+## Project Structure
 
 ```
 helmkube-autowake-cicd
@@ -137,40 +137,12 @@ helmkube-autowake-cicd
 ├── LICENSE                  # MIT license for the project
 └── README.md
 ```
-**Full detailed structure:** see [`docs/architecture.md`](./docs/architecture.md)
 
 ---
 
-##  Documentation
+## Documentation
 
-This repository includes full, production-grade project documentation covering architecture, operations, security, and decision-making.
-
-### **System Architecture**
-- [Architecture Overview](./docs/architecture.md)
-- [Architecture Diagrams (Mermaid)](./docs/diagrams/architecture.md)
-- [Sequence Flow (wake → healthcheck → sleep)](./docs/diagrams/sequence.md)
-
-### **Design Decisions (ADR)**
-- [ADR-001 — Why k3s Single Node](./docs/adr/adr-001-why-k3s-single-node.md)
-- [ADR-002 — Why Terraform for IaC](./docs/adr/adr-002-why-terraform-for-iac.md)
-- [ADR-003 — Wake/Sleep Lifecycle Design](./docs/adr/adr-003-wake-sleep-lifecycle-design.md)
-- [ADR-004 — Security Boundaries & SSM](./docs/adr/adr-004-security-boundaries-and-ssm.md)
-
-### **Operations & Reliability**
-- [Runbook — Wake Failure](./docs/runbooks/wake-failure.md)
-- [Runbook — Destroy Not Triggered](./docs/runbooks/destroy-not-triggered.md)
-- [Runbook — Rollback Procedure](./docs/runbooks/rollback.md)
-
-### **Monitoring & Observability**
-- [Monitoring Overview (Prometheus, Alertmanager, Grafana)](./docs/monitoring.md)
-- [SLOs — Wake Time & Readiness](./docs/slo.md)
-- [Screenshots & Evidence](./docs/screenshots/)
-
-### **Security**
-- [Threat Model & Security Boundaries](./docs/threat-model.md)
-
-### **Cost Optimization**
-- [Cost Model & Savings](./docs/cost.md)
+[docs](./docs/) · [diagrams](./docs/diagrams/) · [adr](./docs/adr/) · [runbooks](./docs/runbooks/) · [screenshots](./docs/screenshots/)
 
 ---
 
@@ -320,52 +292,23 @@ Or using CLI:
     aws logs tail /aws/lambda/helmkube-autowake-sleep --follow
 
 
-# Cost Optimization
+## Cost Optimization
 
-This platform is intentionally designed to minimize recurring infrastructure cost while preserving realistic Kubernetes workflows.
-
-- **Automated EC2 Sleep**
-  The instance automatically stops during idle periods, reducing compute cost to near-zero outside active usage windows.
-
-- **Single-Node k3s Instead of EKS**
-  Eliminates control-plane charges and load balancer overhead while retaining Kubernetes functionality.
-
-- **Optional Monitoring Stack**
-  Prometheus and Grafana can be disabled via Terraform variables to reduce memory and compute usage.
-
-- **Serverless Control Layer**
-  Lambda, API Gateway, and EventBridge operate on low-cost, event-driven pricing models.
-
-- **Minimal Container Footprint**
-  A single lightweight application image is stored in ECR, minimizing storage and transfer cost.
-
-- **No NAT Gateway**
-  Outbound traffic uses the public interface, avoiding fixed monthly NAT Gateway charges (~$30+ per month).
+- On-demand EC2 lifecycle eliminates idle compute spend.
+- k3s instead of EKS removes control-plane costs.
+- Optional monitoring reduces memory overhead.
+- Serverless orchestration minimizes baseline charges.
+- No NAT Gateway to avoid fixed monthly fees.
 
 
-# Future Work
+## Future Work
 
-If I were to evolve this platform further, I would focus on the following areas:
-
-- **Advanced CI/CD Controls**  
-  Separate validation, linting, and security stages with stricter quality gates, plus infrastructure drift detection.
-
-- **Expanded Observability**  
-  Integrate Loki and Tempo to unify metrics, logs, and traces into a single observability stack.
-
-- **Performance Optimization**  
-  Introduce optional CloudFront caching strategies to reduce perceived cold-start latency globally.
-
-- **Policy & Governance**  
-  Implement policy-as-code using OPA/Conftest and extend security scanning with deeper compliance validation.
-
-- **Reliability Engineering**  
-  Add synthetic health checks, formal SLOs for wake latency, and automated rollback mechanisms on readiness failures.
-
-- **Application Evolution**  
-  Extend the workload into a small multi-service architecture with its own dedicated CI pipeline.
-
-These improvements would further mature the platform into a resilient, governance-aware, and production-aligned Kubernetes environment.
+- Stronger CI/CD governance and drift detection.
+- Full observability stack with metrics, logs, and traces.
+- Global performance tuning for cold-start reduction.
+- Policy-as-code and compliance validation.
+- Formal reliability targets and rollback automation.
+- Multi-service workload expansion.
 
 ---
 
